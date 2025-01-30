@@ -14,4 +14,8 @@ endif
 build:
 	python -m build --wheel
 
+start: build
+	pip install --force-reinstall dist/*
+	flask --app api run
+
 .PHONY: *
