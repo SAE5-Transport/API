@@ -11,4 +11,7 @@ ifeq ($(OS), Windows)
 	.venv\Scripts\pip install -r requirements.txt
 endif
 
+build:
+	python -m build --wheel
+
 .PHONY: *
