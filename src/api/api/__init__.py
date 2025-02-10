@@ -3,14 +3,15 @@
 '''
 from flask import Flask
 from apifairy import APIFairy
-
-HOST = "localhost"
-PORT = 5000
+from api.api.v1 import v1_bp
+from api.utils.config import app_host, app_port
 
 apifairy = APIFairy()
 
 def create_app():
-    from api.api.v1 import v1_bp
+    '''
+        INIT FLASK APP
+    '''
 
     app = Flask(__name__)  # Use __name__ instead of "API"
     app.register_blueprint(v1_bp)
@@ -23,6 +24,7 @@ def create_app():
 
     return app
 
+
 if __name__ == "__main__":
     app = create_app()
-    app.run(host=HOST, port=PORT)
+    app.run(host=app_host, port=app_port)
