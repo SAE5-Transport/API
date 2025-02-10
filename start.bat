@@ -4,7 +4,7 @@ call .venv\Scripts\activate
 .venv\Scripts\pip install --upgrade build
 python -m build --wheel
 for %%f in ("%~dp0dist\*.whl") do (
-    pip install "%%f"
+    pip install --force-reinstall "%%f"
 )
 set FLASK_APP=api
 flask run

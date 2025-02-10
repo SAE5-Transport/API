@@ -21,7 +21,8 @@ def getAdresses(name, limit=5):
                         "lat": geometry_street['coordinates'][1],
                         "lon": geometry_street['coordinates'][0],
                         "city": property_street['city'] if 'city' in property_street else None,
-                        "type": property_street['type']
+                        "type": property_street['type'],
+                        "postcode": property_street['postcode'] if 'postcode' in property_street else None,
                     })
 
             return streets[0:limit]

@@ -1,7 +1,7 @@
 OS := $(shell uname)
 
 venv:
-	python -m venv .venv
+	python3 -m venv .venv
 ifeq ($(OS), Linux)
 	.venv/bin/pip install --upgrade pip
 	.venv/bin/pip install -r requirements.txt
@@ -12,7 +12,7 @@ ifeq ($(OS), Windows)
 endif
 
 build:
-	python -m build --wheel
+	python3 -m build --wheel
 
 start: build
 	pip install --force-reinstall dist/*
