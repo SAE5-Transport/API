@@ -1,4 +1,5 @@
 import requests
+from api.utils.functions import checkDistanceBetweenPoints
 
 def getStations(name):
     url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
@@ -18,6 +19,8 @@ def getStations(name):
     if response.status_code == 200:
         if 'data' in response.json():
             data = response.json()['data']['stations']
+
+            finalData = []
 
             modes = []
 
@@ -48,6 +51,19 @@ def getStations(name):
             # Sort stations by mode
             data.sort(key=lambda x: x["mode"])
 
-            return data
+            # Group stations by their name
+            for station in data:
+                found = False
+                for x in finalData:
+                    if x["name"] == station["name"] and checkDistanceBetweenPoints(x["lat"], x["lon"], station["lat"], station["lon"], 1):
+                        x["stops"] += station["stops"]
+                        found = True
+                        break
+
+                if not found:
+                    finalData.append(station)
+
+
+            return finalData
         
     return {"error": "No data found"}
