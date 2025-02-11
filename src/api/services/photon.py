@@ -23,7 +23,7 @@ def getAdresses(name):
                         "city": property_street['city'] if 'city' in property_street else None,
                         "type": property_street['type'],
                         "postcode": property_street['postcode'] if 'postcode' in property_street else None,
-                        "state": property_street['state'],
+                        "state": property_street['state'] if 'state' in property_street else None,
                     })
 
             return streets

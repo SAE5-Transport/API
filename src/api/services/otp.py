@@ -46,7 +46,11 @@ def getStations(name):
 
             # Get highest mode for each station
             for station in data:
-                station["mode"] = min([orders[line["mode"]] for stop in station["stops"] for line in stop["routes"]])
+                station_modes = [orders[line["mode"]] for stop in station["stops"] for line in stop["routes"] if "mode" in line and line["mode"] in orders]
+                if station_modes:
+                    station["mode"] = min(station_modes)
+                else:
+                    station["mode"] = max(orders.values()) + 1  # Assign a default mode if none found
 
             # Sort stations by mode
             data.sort(key=lambda x: x["mode"])

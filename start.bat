@@ -1,3 +1,7 @@
+if exist .venv\Scripts\activate (
+    taskkill /f /im python.exe > nul 2>&1
+    rd /s /q .venv
+)
 if exist .venv rd /s /q .venv
 python -m venv .venv
 call .venv\Scripts\activate
