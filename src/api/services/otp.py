@@ -1,6 +1,6 @@
 import requests
 
-def getStations(name, limit=5):
+def getStations(name):
     url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
 
     payload = {
@@ -17,7 +17,7 @@ def getStations(name, limit=5):
 
     if response.status_code == 200:
         if 'data' in response.json():
-            data = response.json()['data']['stations'][0:limit]
+            data = response.json()['data']['stations']
 
             return data
         

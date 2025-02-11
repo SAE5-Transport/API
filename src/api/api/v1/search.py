@@ -49,19 +49,15 @@ def findLocation(data: str):
             "otp": [],
             "photon": []
         }
-        limit = 5
 
-        otp = getStations(name, limit)
+        otp = getStations(name)
         if 'error' in otp:
             return otp, 404
         
         main_data['otp'] = otp
 
-        if len(otp) < limit:
-            limit = limit - len(otp)
-            
-            photon = getAdresses(name, limit)
-            main_data['photon'] = photon
+        photon = getAdresses(name)
+        main_data['photon'] = photon
 
         return main_data
     

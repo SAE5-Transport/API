@@ -1,6 +1,6 @@
 import requests
 
-def getAdresses(name, limit=5):
+def getAdresses(name):
     url = f"https://photon.komoot.io/api/?q={name}"
 
     response = requests.get(url)
@@ -25,6 +25,6 @@ def getAdresses(name, limit=5):
                         "postcode": property_street['postcode'] if 'postcode' in property_street else None,
                     })
 
-            return streets[0:limit]
+            return streets
         
     return {}
