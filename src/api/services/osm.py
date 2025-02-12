@@ -1,0 +1,28 @@
+import requests
+
+def getAdresses(name):
+    url = f"https://nominatim.openstreetmap.org/search?format=json&q={name}"
+
+    response = requests.get(url, headers={
+        'User-Agent': 'MonAppFlutter/1.0 (monemail@example.com)',
+        'Content-Type': 'application/json'
+    })
+    
+    if response.status_code == 200:
+        data = response.json()
+        
+        streets = []
+
+        for feature in data:
+            if feature['addresstype'] in ['town', 'road']:
+                streets.append({
+                    "name": feature['display_name'].split(", ")[0],
+                    "subname": ", ".join(feature['display_name'].split(", ")[1:]),
+                    "lat": feature['lat'],
+                    "lon": feature['lon'],
+                    "type": feature['addresstype'],
+                })
+
+        return streets
+        
+    return {}

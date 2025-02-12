@@ -2,7 +2,7 @@ from flask import Blueprint
 from flask_marshmallow import Marshmallow
 from apifairy import response, other_responses, arguments
 from api.services.otp import getStations
-from api.services.photon import getAdresses
+from api.services.osm import getAdresses
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
 ma = Marshmallow(search_bp)
@@ -31,7 +31,7 @@ class OTPStation(ma.Schema):
 
 class LocationResponse(ma.Schema):
     otp: list = ma.List(ma.Nested(OTPStation), description="OTP locations")
-    photon: list = ma.List(ma.Dict, description="Photon locations")
+    osm: list = ma.List(ma.Dict, description="OSM locations")
 
 @search_bp.route('/findLocation', strict_slashes=False, methods=['GET'])
 @arguments(LocationQuery)
@@ -39,7 +39,7 @@ class LocationResponse(ma.Schema):
 @other_responses({404: 'No data found', 400: 'No name provided'})
 def findLocation(data: str):
     """
-    Endpoint to find location by name, returns OTP and Photon locations.
+    Endpoint to find location by name, returns OTP and OSM locations.
     """
 
     name = data.get('name')
@@ -47,7 +47,7 @@ def findLocation(data: str):
     if name:
         main_data = {
             "otp": [],
-            "photon": []
+            "osm": []
         }
 
         otp = getStations(name)
@@ -56,8 +56,8 @@ def findLocation(data: str):
         
         main_data['otp'] = otp
 
-        photon = getAdresses(name)
-        main_data['photon'] = photon
+        osm = getAdresses(name)
+        main_data['osm'] = osm
 
         return main_data
     
