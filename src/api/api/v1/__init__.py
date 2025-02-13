@@ -3,10 +3,15 @@
 '''
 from flask import Blueprint
 from .search import search_bp
+from .friend import friend_bp
+from .user import user_bp
 from ...services.postgres import health
 
 v1_bp = Blueprint("v1", __name__, url_prefix='/v1')
 v1_bp.register_blueprint(search_bp)
+v1_bp.register_blueprint(friend_bp)
+v1_bp.register_blueprint(user_bp)
+
 
 @v1_bp.route('/health', strict_slashes=False, methods=['GET'])
 def healthcheck():

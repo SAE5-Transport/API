@@ -25,7 +25,8 @@ def health():
         conn = connector()
         closed = conn.closed
         conn.close()
-    except psycopg2.OperationalError:
+    except psycopg2.OperationalError as error:
+        print(error)
         return False
     return closed == 0
 

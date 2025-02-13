@@ -125,3 +125,4 @@ cython_debug/
 
 # IDE
 .vscode
+set_env.ps1
