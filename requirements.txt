@@ -1,3 +1,4 @@
+api @ file:///home/user/Documents/GitHub/SAE5/API/dist/api-0.0.0-py3-none-any.whl#sha256=b24a698fd734ea30cf8bd0fb5895e43e90c7f54e04d225a30361ef46929c353b
 apifairy==1.4.0
 apispec==6.8.1
 blinker==1.9.0
@@ -5,10 +6,10 @@ build==1.2.2.post1
 certifi==2025.1.31
 charset-normalizer==3.4.1
 click==8.1.8
+dnspython==2.7.0
 Flask==3.1.0
 Flask-HTTPAuth==4.8.0
 flask-marshmallow==1.3.0
-haversine==2.9.0
 idna==3.10
 itsdangerous==2.2.0
 Jinja2==3.1.5
@@ -16,6 +17,7 @@ MarkupSafe==3.0.2
 marshmallow==3.26.1
 packaging==24.2
 psycopg2-binary==2.9.10
+pymongo==4.11.1
 pyproject_hooks==1.2.0
 PyYAML==6.0.2
 requests==2.32.3
