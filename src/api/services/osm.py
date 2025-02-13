@@ -14,7 +14,7 @@ def getAdresses(name):
         streets = []
 
         for feature in data:
-            if feature['addresstype'] in ['town', 'road']:
+            if feature['addresstype'] in ['town', 'village', 'road', 'bus_stop']:
                 streets.append({
                     "name": feature['display_name'].split(", ")[0],
                     "subname": ", ".join(feature['display_name'].split(", ")[1:]),

@@ -1,9 +1,14 @@
 if exist .venv\Scripts\activate (
+    call .venv\Scripts\activate
+    call .venv\Scripts\deactivate
+)
+timeout /t 2 /nobreak > nul
+if exist .venv (
     taskkill /f /im python.exe > nul 2>&1
     timeout /t 2 /nobreak > nul
     rd /s /q .venv
 )
-if exist .venv rd /s /q .venv
+timeout /t 2 /nobreak > nul
 python -m venv .venv
 call .venv\Scripts\activate
 .venv\Scripts\pip install --upgrade build
