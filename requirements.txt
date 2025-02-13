@@ -1,4 +1,3 @@
-api @ file:///home/user/Documents/GitHub/SAE5/API/dist/api-0.0.0-py3-none-any.whl#sha256=b24a698fd734ea30cf8bd0fb5895e43e90c7f54e04d225a30361ef46929c353b
 apifairy==1.4.0
 apispec==6.8.1
 blinker==1.9.0
