@@ -109,7 +109,7 @@ class IntermediateCall(ma.Schema):
     realtime = ma.Boolean(description="Indicates if the data is real-time")
 
 class PointsOnLink(ma.Schema):
-    points = ma.String(description="Encoded polyline points")
+    points = ma.String(description="Encoded polyline points (look in https://developers.google.com/maps/documentation/utilities/polylineutility for decoding)")
 
 class Leg(ma.Schema):
     aimedStartTime = ma.DateTime(description="Scheduled start time")
