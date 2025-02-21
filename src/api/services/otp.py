@@ -111,6 +111,7 @@ def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datet
 
     # Check if the request was successful
     if response.status_code == 200:
-        return response.json()
+        if 'data' in response.json():
+            return response.json()["data"]
     
     return {"error": "No data found"}
