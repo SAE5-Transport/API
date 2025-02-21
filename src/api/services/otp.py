@@ -97,7 +97,7 @@ def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datet
                     "longitude": arrival_lon
                 }
             },
-            "dateTime": date.isoformat() + 'Z',
+            "dateTime": date.isoformat(),
             "numTripPatterns": numTrips,
             "arriveBy": arrival
         }

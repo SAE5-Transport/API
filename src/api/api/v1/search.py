@@ -144,7 +144,6 @@ class SearchPathsResponse(ma.Schema):
 
 @search_bp.route('/searchPaths', strict_slashes=False, methods=['GET'])
 @arguments(SearchPathsQuery)
-@response(SearchPathsResponse)
 @other_responses({404: 'No data found', 400: 'Missing required parameters'})
 def searchPaths(data):
     """
