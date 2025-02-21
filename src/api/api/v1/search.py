@@ -112,7 +112,7 @@ class IntermediateCall(ma.Schema):
     realtime = ma.Boolean(description="Indicates if the data is real-time")
 
 class PointsOnLink(ma.Schema):
-    points = ma.String(description="Encoded polyline points (look in https://developers.google.com/maps/documentation/utilities/polylineutility for decoding)")
+    points = ma.String(description="Encoded polyline points (look in https://developers.google.com/maps/documentation/routes/polylinedecoder for decoding)")
 
 class Leg(ma.Schema):
     aimedStartTime = ma.String(description="Scheduled start time")
@@ -130,7 +130,7 @@ class Leg(ma.Schema):
     interchangeFrom = ma.Nested(Interchange, description="Interchange from")
     intermediateEstimatedCalls = ma.List(ma.Nested(IntermediateCall), description="Intermediate stops")
     line = ma.Nested(LineTransmodel, allow_none=True, description="Line information")
-    pointsOnLink = ma.Nested(PointsOnLink, description="Encoded path coordinates (look in https://developers.google.com/maps/documentation/utilities/polylineutility for decoding)")
+    pointsOnLink = ma.Nested(PointsOnLink, description="Encoded path coordinates (look in https://developers.google.com/maps/documentation/routes/polylinedecoder for decoding)")
     realtime = ma.Boolean(description="Indicates if the data is real-time")
     toEstimatedCall = ma.Nested(DestinationDisplay, allow_none=True, description="Destination display text")
 
