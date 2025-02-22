@@ -3,7 +3,7 @@ from flask_marshmallow import Marshmallow
 from datetime import datetime
 from apifairy import response, other_responses, arguments
 from api.services.otp import getStations, getPaths
-from api.services.osm import getAdresses
+from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
 ma = Marshmallow(search_bp)
@@ -38,7 +38,7 @@ class FindLocationResponse(ma.Schema):
 @arguments(FindLocationQuery)
 @response(FindLocationResponse)
 @other_responses({404: 'No data found', 400: 'No name provided'})
-def findLocation(data: str):
+def findLocation(data: dict):
     """
     Endpoint to find location by name, returns OTP and OSM locations.
     """
@@ -66,6 +66,39 @@ def findLocation(data: str):
         return main_data
     
     return {"error": "No name provided"}, 400
+
+class FindLocationByCoordinatesQuery(ma.Schema):
+    lat: float = ma.Float(required=True, description="Latitude")
+    lon: float = ma.Float(required=True, description="Longitude")
+
+class FindLocationByCoordinatesResponse(ma.Schema):
+    osm: list = ma.List(ma.Dict, description="OSM locations")
+
+@search_bp.route('/findLocationByCoordinates', strict_slashes=False, methods=['GET'])
+@arguments(FindLocationByCoordinatesQuery)
+@response(FindLocationByCoordinatesResponse)
+@other_responses({400: 'No coordinates provided'})
+def findLocationByCoordinates(data: dict):
+    """
+    Endpoint to find location by coordinates, returns OSM locations.
+    """
+
+    lat = data.get('lat')
+    lon = data.get('lon')
+
+    # Check if the lat and lon are present
+    if lat and lon:
+        main_data = {
+            "osm": []
+        }
+
+        # Get the adresses from OSM
+        osm = getAdressesByCoordinates(lat, lon)
+        main_data['osm'] = osm
+
+        return main_data
+    
+    return {"error": "No coordinates provided"}, 400
 
 class SearchPathsQuery(ma.Schema):
     departure_lat: float = ma.Float(required=True, description="Departure Latitude")
