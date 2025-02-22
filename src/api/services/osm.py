@@ -39,16 +39,13 @@ def getAdressesByCoordinates(lat, lon):
         data = response.json()
         
         streets = []
-
-        for feature in data:
-            if feature['addresstype'] in ['town', 'village', 'road', 'bus_stop']:
-                streets.append({
-                    "name": feature['display_name'].split(", ")[0],
-                    "subname": ", ".join(feature['display_name'].split(", ")[1:]),
-                    "lat": feature['lat'],
-                    "lon": feature['lon'],
-                    "type": feature['addresstype'],
-                })
+        streets.append({
+            "name": data['display_name'].split(", ")[0],
+            "subname": ", ".join(data['display_name'].split(", ")[1:]),
+            "lat": data['lat'],
+            "lon": data['lon'],
+            "type": data['addresstype'],
+        })
 
         return streets
         
