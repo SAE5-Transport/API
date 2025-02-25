@@ -8,6 +8,7 @@ from api.utils.config import app_host, app_port
 
 apifairy = APIFairy()
 
+
 def create_app():
     '''
         INIT FLASK APP

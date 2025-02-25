@@ -5,11 +5,16 @@ from apifairy import response, other_responses, arguments
 from flask import Blueprint
 from flask_marshmallow import Marshmallow
 from .search import search_bp
+from .friend import friend_bp
+from .user import user_bp
 from ...services.postgres import health as pghealth
 from ...services.mongo import health as mongohealth
 
 v1_bp = Blueprint("v1", __name__, url_prefix='/v1')
 v1_bp.register_blueprint(search_bp)
+v1_bp.register_blueprint(friend_bp)
+v1_bp.register_blueprint(user_bp)
+
 ma = Marshmallow(search_bp)
 
 class HealthResponse(ma.Schema):
