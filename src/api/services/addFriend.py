@@ -15,7 +15,6 @@ def add_friend(friend, user):
     conn.close()
     return friend
 
-
 def get_friends(user):
     '''
         Get all friends of a user
@@ -23,7 +22,7 @@ def get_friends(user):
     conn = connector()
     cursor = conn.cursor()
     cursor.execute(
-        f"SELECT * FROM friends WHERE IdUser = '{user}'")
+        f"SELECT FriendId FROM friends WHERE IdUser = '{user}'")
     friends = cursor.fetchall()
     cursor.close()
     conn.close()
