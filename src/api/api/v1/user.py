@@ -28,11 +28,11 @@ def addUser(data):
         add User in database
     '''
     try:
-        idUser = data.get("idUser")
-
-        if not idUser:
+        data = request.get_json()  # Récupère les données du body en JSON
+        if not data or "idUser" not in data:
             return jsonify({"error": "Missing idUser"}), 400
 
+        idUser = data["idUser"]
         add_user(idUser)
         return jsonify({"message": f"User {idUser} added successfully"}), 201
 
@@ -48,7 +48,7 @@ class ListUsers(ma.Schema):
     users = ma.List(ma.Nested(Userid))
 
 
-@user_bp.route('/test', strict_slashes=False, methods=['GET'])
+@user_bp.route('/list', strict_slashes=False, methods=['GET'])
 @response(ListUsers, 200)
 def getAllIdUser():
     '''

@@ -27,9 +27,10 @@ def getall_user():
     '''
     conn = connector()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM USERS")
-    rows = cursor.fetchall()
+    cursor.execute("SELECT IdUser FROM USERS")  # Prend uniquement les IDs
+    rows = [{"idUser": row[0]}
+            for row in cursor.fetchall()]  # Reformate les données
     cursor.close()
     conn.close()
 
-    return jsonify(rows)  # Transforme en JSON
+    return rows  # ✅ Retourne une liste brute, pas un objet Response
