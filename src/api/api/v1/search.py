@@ -130,6 +130,7 @@ class LinePresentation(ma.Schema):
     textColour = ma.String(description="Text color")
 
 class LineTransmodel(ma.Schema):
+    id = ma.String(description="Line ID")
     name = ma.String(description="Line name")
     publicCode = ma.String(description="Public code")
     transportMode = ma.String(description="Transport mode")
