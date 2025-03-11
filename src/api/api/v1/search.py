@@ -118,6 +118,8 @@ class DestinationDisplay(ma.Schema):
 
 class QuayId(ma.Schema):
     id = ma.String(description="Quay ID")
+    latitude = ma.Float(description="Latitude")
+    longitude = ma.Float(description="Longitude")
 
 class QuayName(ma.Schema):
     name = ma.String(description="Quay name")
@@ -130,6 +132,7 @@ class LinePresentation(ma.Schema):
     textColour = ma.String(description="Text color")
 
 class LineTransmodel(ma.Schema):
+    id = ma.String(description="Line ID")
     name = ma.String(description="Line name")
     publicCode = ma.String(description="Public code")
     transportMode = ma.String(description="Transport mode")
