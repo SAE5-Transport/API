@@ -17,6 +17,9 @@ v1_bp = Blueprint("v1", __name__, url_prefix='/v1')
 v1_bp.register_blueprint(search_bp)
 v1_bp.register_blueprint(friend_bp)
 v1_bp.register_blueprint(user_bp)
+v1_bp.register_blueprint(company_bp)
+v1_bp.register_blueprint(agent_bp)
+v1_bp.register_blueprint(trajet_bp)
 
 ma = Marshmallow(search_bp)
 
