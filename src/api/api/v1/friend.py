@@ -11,7 +11,7 @@ friend_bp = Blueprint("friend", __name__, url_prefix='/friend')
 ma = Marshmallow(friend_bp)
 
 
-class MessageSuccess(ma.Schema):
+class FriendMessageSuccess(ma.Schema):
     message = ma.String()
 
 
@@ -22,7 +22,7 @@ class AddFriend(ma.Schema):
 
 @friend_bp.route('/add', strict_slashes=False, methods=['POST'])
 @body(AddFriend)
-@response(MessageSuccess, 201)
+@response(FriendMessageSuccess, 201)
 @other_responses({400: 'User not found', 500: 'Internal Error'})
 def addFriend(data):
     '''
