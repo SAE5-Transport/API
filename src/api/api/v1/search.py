@@ -118,6 +118,8 @@ class DestinationDisplay(ma.Schema):
 
 class QuayId(ma.Schema):
     id = ma.String(description="Quay ID")
+    latitude = ma.Float(description="Latitude")
+    longitude = ma.Float(description="Longitude")
 
 class QuayName(ma.Schema):
     name = ma.String(description="Quay name")
