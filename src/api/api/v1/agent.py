@@ -8,30 +8,30 @@ agent_bp = Blueprint("agent", __name__, url_prefix='/agent')
 ma = Marshmallow(agent_bp)
 
 
-class MessageSuccess(ma.Schema):
+class AgentMessageSuccess(ma.Schema):
     message = ma.String()
 
 
 class AddAgent(ma.Schema):
-    idUser = ma.String(description="ID of the user")
+    AgentId = ma.String(description="ID of the user")
     idCompany = ma.String(description="ID of the company")
 
 
 class AgentSchema(ma.Schema):
-    idUser = ma.String(description="ID of the user")
+    AgentSchemaId = ma.String(description="ID of the user")
     idCompany = ma.String(description="ID of the company")
 
 
 @agent_bp.route('/add', strict_slashes=False, methods=['POST'])
 @body(AddAgent)
-@response(MessageSuccess, 201)
+@response(AgentMessageSuccess, 201)
 @other_responses({400: 'User or company not found', 500: 'Internal Error'})
 def addAgent(data):
     '''
         Add a new agent
     '''
     try:
-        id_user = data["idUser"]
+        id_user = data["AgentId"]
         id_company = data["idCompany"]
 
         success, message = add_agent(id_user, id_company)
@@ -57,18 +57,14 @@ def getAgents():
         return jsonify({"error": str(e)}), 500
 
 
-@agent_bp.route('/delete', strict_slashes=False, methods=['POST'])
-@body(AddAgent)
-@response(MessageSuccess, 200)
+@agent_bp.route('/delete/<id_user>/<id_company>', strict_slashes=False, methods=['DELETE'])
+@response(AgentMessageSuccess, 200)
 @other_responses({400: 'User or company not found', 500: 'Internal Error'})
-def deleteAgent(data):
+def deleteAgent(id_user, id_company):
     '''
         Delete an agent
     '''
     try:
-        id_user = data["idUser"]
-        id_company = data["idCompany"]
-
         success, message = delete_agent(id_user, id_company)
 
         if not success:

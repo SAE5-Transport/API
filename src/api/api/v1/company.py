@@ -8,13 +8,13 @@ company_bp = Blueprint("company", __name__, url_prefix='/company')
 ma = Marshmallow(company_bp)
 
 
-class MessageSuccess(ma.Schema):
+class CompanyMessageSuccess(ma.Schema):
     message = ma.String()
 
 
 class AddCompany(ma.Schema):
     idCompany = ma.String(description="ID of the company")
-    Name = ma.String(description="Name of the company")
+    AddName = ma.String(description="Name of the company")
 
 
 class CompanySchema(ma.Schema):
@@ -24,7 +24,7 @@ class CompanySchema(ma.Schema):
 
 @company_bp.route('/add', strict_slashes=False, methods=['POST'])
 @body(AddCompany)
-@response(MessageSuccess, 201)
+@response(CompanyMessageSuccess, 201)
 @other_responses({400: 'Company already exists', 500: 'Internal Error'})
 def addCompany(data):
     '''
@@ -32,7 +32,7 @@ def addCompany(data):
     '''
     try:
         id_company = data["idCompany"]
-        name = data["Name"]
+        name = data["AddName"]
 
         success, message = add_company(id_company, name)
 
@@ -44,7 +44,7 @@ def addCompany(data):
         return jsonify({"error": str(e)}), 500
 
 
-@company_bp.route('/getAll', strict_slashes=False, methods=['GET'])
+@company_bp.route('/list', strict_slashes=False, methods=['GET'])
 @other_responses({400: 'Missing parameter', 500: 'Internal Error'})
 def getAllCompanies():
     '''
@@ -57,17 +57,14 @@ def getAllCompanies():
         return jsonify({"error": str(e)}), 500
 
 
-@company_bp.route('/delete', strict_slashes=False, methods=['POST'])
-@body(AddCompany)
-@response(MessageSuccess, 200)
+@company_bp.route('/delete/<id_company>', strict_slashes=False, methods=['DELETE'])
+@response(CompanyMessageSuccess, 200)
 @other_responses({400: 'Company not found', 500: 'Internal Error'})
-def deleteCompany(data):
+def deleteCompany(id_company):
     '''
         Delete a company
     '''
     try:
-        id_company = data["idCompany"]
-
         success, message = delete_company(id_company)
 
         if not success:
