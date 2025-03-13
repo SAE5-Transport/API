@@ -11,7 +11,7 @@ user_bp = Blueprint("user", __name__, url_prefix='/user')
 ma = Marshmallow(user_bp)
 
 
-class MessageSuccess(ma.Schema):
+class UserMessageSuccess(ma.Schema):
     message = ma.String()
 
 
@@ -21,7 +21,7 @@ class Userid(ma.Schema):
 
 @user_bp.route('/add', strict_slashes=False, methods=['POST'])
 @body(Userid)
-@response(MessageSuccess, 201)
+@response(UserMessageSuccess, 201)
 @other_responses({400: 'User not found', 500: 'Internal Error'})
 def addUser(data):
     '''
@@ -38,6 +38,7 @@ def addUser(data):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 class ListUsers(ma.Schema):

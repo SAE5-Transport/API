@@ -1,5 +1,6 @@
 apifairy==1.4.0
 apispec==6.8.1
+bjson==0.2.9
 blinker==1.9.0
 build==1.2.2.post1
 certifi==2025.1.31
