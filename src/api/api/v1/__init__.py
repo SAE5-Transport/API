@@ -2,7 +2,7 @@
     ENDPOINTS
 '''
 from apifairy import response, other_responses, arguments
-from flask import Blueprint
+from flask import Blueprint, jsonify
 from flask_marshmallow import Marshmallow
 from .search import search_bp
 from .friend import friend_bp
@@ -39,3 +39,14 @@ def healthcheck():
         "mongodb": mongohealth()
     }
     return main_data
+
+
+@v1_bp.route('/swagger.json', strict_slashes=False, methods=['GET'])
+def swagger():
+    '''
+        Swagger JSON
+    '''
+    from ..__init__ import apifairy
+    apifairy.apispec['info']['title'] = 'HexaTransit API'
+    apifairy.apispec['info']['version'] = '1.0'
+    return jsonify(apifairy.apispec)
