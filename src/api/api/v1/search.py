@@ -2,7 +2,7 @@ from flask import Blueprint
 from flask_marshmallow import Marshmallow
 from datetime import datetime
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLine
+from api.services.otp import getStations, getPaths, getIncidentsFromLines
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -273,7 +273,34 @@ def incidentsOnLine(data):
     # Check if the required parameters are present
     if data.get('lineId'):
         # Get the incidents
-        incidents = getIncidentsFromLine(data['lineId'])
+        incidents = getIncidentsFromLines(data['lineId'])
+
+        if "error" in incidents:
+            return incidents, 404
+        
+        return incidents
+    else:
+        return {"error": "Missing required parameters"}, 400
+
+class IncidentsOnLinesQuery(ma.Schema):
+    lineIds: list = ma.List(ma.String, required=True, description="List of line IDs")
+
+class IncidentsOnLinesResponse(ma.Schema):
+    lines: str = ma.List(ma.Nested(LineOnIncident), description="Lines information")
+
+@search_bp.route('/incidentsOnLines', strict_slashes=False, methods=['GET'])
+@arguments(IncidentsOnLinesQuery)
+@response(IncidentsOnLinesResponse)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def incidentsOnLines(data):
+    """
+    Endpoint to get incidents on multiple lines.
+    """
+
+    # Check if the required parameters are present
+    if data.get('lineIds'):
+        # Get the incidents
+        incidents = getIncidentsFromLines(data['lineIds'])
 
         if "error" in incidents:
             return incidents, 404

@@ -116,14 +116,14 @@ def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datet
     
     return {"error": "No data found"}
 
-def getIncidentsFromLine(line):
+def getIncidentsFromLines(lines):
     url = "http://otp.clarifygdps.com/otp/transmodel/v3"
 
     # Prepare the request
     payload = {
-        "query": "query line($id: ID!) {  line(id: $id) {    id    publicCode    name    situations {      id      severity      summary {        value      }      description {        value      }      validityPeriod {        startTime        endTime      }      affects {        ... on AffectedLine {          line {            id            publicCode            name          }        }                ... on AffectedStopPlace {          quay {            name          	id            latitude            longitude          }          stopPlace {            name            id            latitude            longitude          }        }      }    }  }}",
+        "query": "query line($ids: [ID]) {  lines(ids: $ids) {    id    publicCode    name    situations {      id      severity      summary {        value      }      description {        value      }      validityPeriod {        startTime        endTime      }      affects {        ... on AffectedLine {          line {            id            publicCode            name          }        }                ... on AffectedStopPlace {          quay {            name          	id            latitude            longitude          }          stopPlace {            name            id            latitude            longitude          }        }      }    }  }}",
         "variables": {
-            "id": line
+            "ids": lines
         }
     }
     headers = {
