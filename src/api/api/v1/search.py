@@ -1,6 +1,6 @@
 from flask import Blueprint, Response, json
 from flask_marshmallow import Marshmallow
-import gzip
+import gzip, base64
 from datetime import datetime
 from apifairy import response, other_responses, arguments
 from api.services.otp import getStations, getPaths, getIncidentsFromLines
@@ -309,13 +309,13 @@ def incidentsOnLines(data):
             compressed_data = gzip.compress(json.dumps(incidents).encode('utf-8'))
             return Response(
                 compressed_data,
-                content_type='application/json',
+                content_type='application/gzip',
                 headers={
                     'Content-Encoding': 'gzip',
                     'Content-Length': str(len(compressed_data))
                 }
             )
-        
-        return incidents
+        else:
+            return incidents
     else:
         return {"error": "Missing required parameters"}, 400
