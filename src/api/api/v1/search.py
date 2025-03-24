@@ -1,6 +1,6 @@
 from flask import Blueprint, Response, json
 from flask_marshmallow import Marshmallow
-import gzip, base64
+import zstandard as zstd
 from datetime import datetime
 from apifairy import response, other_responses, arguments
 from api.services.otp import getStations, getPaths, getIncidentsFromLines
@@ -285,7 +285,7 @@ def incidentsOnLine(data):
 
 class IncidentsOnLinesQuery(ma.Schema):
     lineIds: list = ma.List(ma.String, required=True, description="List of line IDs")
-    gzip: bool = ma.Boolean(description="If true, the response will be compressed with gzip")
+    zstd: bool = ma.Boolean(description="If true, the response will be compressed with Zstandard", load_default=False)
 
 @search_bp.route('/incidentsOnLines', strict_slashes=False, methods=['GET'])
 @arguments(IncidentsOnLinesQuery)
@@ -303,18 +303,13 @@ def incidentsOnLines(data):
         if "error" in incidents:
             return incidents, 404
         
-        # Check if gzip is requested
-        if data.get('gzip'):
-            # Compress the response data
-            compressed_data = gzip.compress(json.dumps(incidents).encode('utf-8'))
-            return Response(
-                compressed_data,
-                content_type='application/gzip',
-                headers={
-                    'Content-Encoding': 'gzip',
-                    'Content-Length': str(len(compressed_data))
-                }
-            )
+        # Check if zstd is requested
+        if data.get('zstd'):
+            # Compress the response with Zstandard
+            cctx = zstd.ZstdCompressor()
+            incidents = cctx.compress(json.dumps(incidents).encode('utf-8'))
+
+            return Response(incidents, mimetype='application/zstd')
         else:
             return incidents
     else:
