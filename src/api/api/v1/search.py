@@ -1,8 +1,9 @@
-from flask import Blueprint
+from flask import Blueprint, Response, json
 from flask_marshmallow import Marshmallow
+import zstandard as zstd
 from datetime import datetime
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths
+from api.services.otp import getStations, getPaths, getIncidentsFromLines
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -209,5 +210,107 @@ def searchPaths(data):
             return paths, 404
         
         return paths
+    else:
+        return {"error": "Missing required parameters"}, 400
+    
+class IncidentsOnLineQuery(ma.Schema):
+    lineId: str = ma.String(required=True, description="Line ID")
+
+class IncidentValueString(ma.Schema):
+    value = ma.String(description="Value of the type")
+
+class IncidentValidityPeriod(ma.Schema):
+    startTime = ma.String(description="Start time of the incident")
+    endTime = ma.String(description="End time of the incident")
+
+class AffectedLine(ma.Schema):
+    id = ma.String(description="Line ID")
+    publicCode = ma.String(description="Public code")
+    name = ma.String(description="Line name")
+
+class AffectedStopPlace(ma.Schema):
+    name = ma.String(description="Stop place name")
+    id = ma.String(description="Stop place ID")
+    latitude = ma.Float(description="Latitude")
+    longitude = ma.Float(description="Longitude")
+
+class AffectedQuay(ma.Schema):
+    name = ma.String(description="Quay name")
+    id = ma.String(description="Quay ID")
+    latitude = ma.Float(description="Latitude")
+    longitude = ma.Float(description="Longitude")
+
+class Affected(ma.Schema):
+    line = ma.Nested(AffectedLine, description="Line information")
+    stopPlace = ma.Nested(AffectedStopPlace, description="Stop place information")
+    quay = ma.Nested(AffectedQuay, description="Quay information")
+
+class Incident(ma.Schema):
+    id = ma.String(description="Incident ID")
+    severity = ma.String(description="Incident severity")
+    summary = ma.List(ma.Nested(IncidentValueString), description="Incident summary")
+    description = ma.List(ma.Nested(IncidentValueString), description="Incident description")
+    validityPeriod = ma.Nested(IncidentValidityPeriod, description="Incident validity period")
+    affects = ma.List(ma.Nested(Affected), description="Affected locations")
+
+class LineOnIncident(ma.Schema):
+    id = ma.String(description="Line ID")
+    publicCode = ma.String(description="Public code")
+    name = ma.String(description="Line name")
+    situations = ma.List(ma.Nested(Incident), description="Incidents")
+
+class IncidentsOnLineResponse(ma.Schema):
+    line: str = ma.Nested(LineOnIncident, description="Line information")
+
+@search_bp.route('/incidentsOnLine', strict_slashes=False, methods=['GET'])
+@arguments(IncidentsOnLineQuery)
+@response(IncidentsOnLineResponse)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def incidentsOnLine(data):
+    """
+    Endpoint to get incidents on a line.
+    """
+
+    # Check if the required parameters are present
+    if data.get('lineId'):
+        # Get the incidents
+        incidents = getIncidentsFromLines(data['lineId'])
+
+        if "error" in incidents:
+            return incidents, 404
+        
+        return incidents
+    else:
+        return {"error": "Missing required parameters"}, 400
+
+class IncidentsOnLinesQuery(ma.Schema):
+    lineIds: list = ma.List(ma.String, required=True, description="List of line IDs")
+    zstd: bool = ma.Boolean(description="If true, the response will be compressed with Zstandard", load_default=False)
+
+@search_bp.route('/incidentsOnLines', strict_slashes=False, methods=['GET'])
+@arguments(IncidentsOnLinesQuery)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def incidentsOnLines(data):
+    """
+    Endpoint to get incidents on multiple lines.
+    """
+
+    # Check if the required parameters are present
+    if data.get('lineIds'):
+        # Get the incidents
+        incidents = getIncidentsFromLines(data['lineIds'])
+
+        if "error" in incidents:
+            return incidents, 404
+        
+        # Check if zstd is requested
+        if data.get('zstd'):
+            # Compress the response with Zstandard
+            cctx = zstd.ZstdCompressor()
+            incidents = cctx.compress(json.dumps(incidents).encode('utf-8'))
+
+            return Response(incidents, mimetype='application/zstd')
+        else:
+            return incidents
     else:
         return {"error": "Missing required parameters"}, 400
