@@ -6,6 +6,7 @@ build==1.2.2.post1
 certifi==2025.1.31
 charset-normalizer==3.4.1
 click==8.1.8
+colorama==0.4.6
 dnspython==2.7.0
 Flask==3.1.0
 Flask-HTTPAuth==4.8.0
@@ -17,10 +18,13 @@ Jinja2==3.1.5
 MarkupSafe==3.0.2
 marshmallow==3.26.1
 packaging==24.2
+polyline==2.0.2
 psycopg2-binary==2.9.10
 pymongo==4.11.1
 pyproject_hooks==1.2.0
 PyYAML==6.0.2
+qrcode==8.0
+reportlab==4.3.1
 requests==2.32.3
 setuptools==75.8.0
 urllib3==2.3.0

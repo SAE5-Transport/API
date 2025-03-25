@@ -10,6 +10,8 @@ from .user import user_bp
 from .trajet import trajet_bp
 from .company import company_bp
 from .agent import agent_bp
+from .qrcodeGenerate import qrcode_bp
+from .walkcoord import walk_bp
 from ...services.postgres import health as pghealth
 from ...services.mongo import health as mongohealth
 
@@ -20,6 +22,8 @@ v1_bp.register_blueprint(user_bp)
 v1_bp.register_blueprint(company_bp)
 v1_bp.register_blueprint(agent_bp)
 v1_bp.register_blueprint(trajet_bp)
+v1_bp.register_blueprint(qrcode_bp)
+v1_bp.register_blueprint(walk_bp)
 
 ma = Marshmallow(search_bp)
 
