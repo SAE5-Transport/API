@@ -223,10 +223,15 @@ class IncidentValidityPeriod(ma.Schema):
     startTime = ma.String(description="Start time of the incident")
     endTime = ma.String(description="End time of the incident")
 
+class AffectedLinePresentation(ma.Schema):
+    colour = ma.String(description="Line color")
+    textColour = ma.String(description="Text color")
+
 class AffectedLine(ma.Schema):
     id = ma.String(description="Line ID")
     publicCode = ma.String(description="Public code")
     name = ma.String(description="Line name")
+    presentation = ma.Nested(AffectedLinePresentation, description="Line presentation")
 
 class AffectedStopPlace(ma.Schema):
     name = ma.String(description="Stop place name")
@@ -257,6 +262,7 @@ class LineOnIncident(ma.Schema):
     id = ma.String(description="Line ID")
     publicCode = ma.String(description="Public code")
     name = ma.String(description="Line name")
+    presentation = ma.Nested(AffectedLinePresentation, description="Line presentation")
     situations = ma.List(ma.Nested(Incident), description="Incidents")
 
 class IncidentsOnLineResponse(ma.Schema):

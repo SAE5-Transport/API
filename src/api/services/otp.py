@@ -121,7 +121,7 @@ def getIncidentsFromLines(lines):
 
     # Prepare the request
     payload = {
-        "query": "query line($ids: [ID]) {  lines(ids: $ids) {    id    publicCode    name    situations {      id      severity      summary {        value      }      description {        value      }      validityPeriod {        startTime        endTime      }      affects {        ... on AffectedLine {          line {            id            publicCode            name          }        }                ... on AffectedStopPlace {          quay {            name          	id            latitude            longitude          }          stopPlace {            name            id            latitude            longitude          }        }      }    }  }}",
+        "query": "query line($ids: [ID]) {  lines(ids: $ids) {    id    publicCode    name    presentation {      colour      textColour    }    situations {      id      severity      summary {        value      }      description {        value      }      validityPeriod {        startTime        endTime      }      affects {        ... on AffectedLine {          line {            id            publicCode            name            presentation {              colour              textColour            }          }        }        ... on AffectedStopPlace {          quay {            name            id            latitude            longitude          }          stopPlace {            name            id            latitude            longitude          }        }      }    }  }}",
         "variables": {
             "ids": lines
         }
