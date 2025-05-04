@@ -110,91 +110,9 @@ class SearchPathsQuery(ma.Schema):
     arrival: bool = ma.Boolean(description="If true, the start time is the arrival time", load_default=False)
     numTrips: int = ma.Integer(description="Number of trips to return", load_default=5)
 
-class Authority(ma.Schema):
-    id = ma.String(description="Authority ID")
-    name = ma.String(description="Authority name")
-
-class DestinationDisplay(ma.Schema):
-    frontText = ma.String(description="Final destination text display")
-
-class QuayId(ma.Schema):
-    id = ma.String(description="Quay ID")
-    latitude = ma.Float(description="Latitude")
-    longitude = ma.Float(description="Longitude")
-
-class QuayName(ma.Schema):
-    name = ma.String(description="Quay name")
-class Place(ma.Schema):
-    name = ma.String(description="Place name")
-    quay = ma.Nested(QuayId, allow_none=True, description="Quay information")
-
-class LinePresentation(ma.Schema):
-    colour = ma.String(description="Line color")
-    textColour = ma.String(description="Text color")
-
-class LineTransmodel(ma.Schema):
-    id = ma.String(description="Line ID")
-    name = ma.String(description="Line name")
-    publicCode = ma.String(description="Public code")
-    transportMode = ma.String(description="Transport mode")
-    presentation = ma.Nested(LinePresentation, description="Presentation details")
-
-class Interchange(ma.Schema):
-    staySeated = ma.Boolean(description="Indicates if the user should stay seated")
-class IntermediateCall(ma.Schema):
-    aimedDepartureTime = ma.String(description="Scheduled departure time")
-    expectedDepartureTime = ma.String(description="Expected departure time")
-    quay = ma.Nested(QuayName, description="Quay information")
-    cancellation = ma.Boolean(description="Indicates if the trip is cancelled")
-    realtime = ma.Boolean(description="Indicates if the data is real-time")
-
-class PointsOnLink(ma.Schema):
-    points = ma.String(description="Encoded polyline points (look in https://developers.google.com/maps/documentation/routes/polylinedecoder for decoding)")
-
-class Leg(ma.Schema):
-    aimedStartTime = ma.String(description="Scheduled start time")
-    aimedEndTime = ma.String(description="Scheduled end time")
-    expectedStartTime = ma.String(description="Expected start time")
-    expectedEndTime = ma.String(description="Expected end time")
-    duration = ma.Integer(description="Duration in seconds")
-    distance = ma.Float(description="Distance in meters")
-    mode = ma.String(description="Transport mode")
-    authority = ma.Nested(Authority, allow_none=True, description="Transport authority")
-    fromPlace = ma.Nested(Place, allow_none=True, description="Starting place")
-    toPlace = ma.Nested(Place, allow_none=True, description="Destination place")
-    id = ma.String(description="Leg ID (can be used to identify the leg and fetch it later)")
-    interchangeTo = ma.Nested(Interchange, description="Interchange to")
-    interchangeFrom = ma.Nested(Interchange, description="Interchange from")
-    intermediateEstimatedCalls = ma.List(ma.Nested(IntermediateCall), description="Intermediate stops")
-    line = ma.Nested(LineTransmodel, allow_none=True, description="Line information")
-    pointsOnLink = ma.Nested(PointsOnLink, description="Encoded path coordinates (look in https://developers.google.com/maps/documentation/routes/polylinedecoder for decoding)")
-    realtime = ma.Boolean(description="Indicates if the data is real-time")
-    toEstimatedCall = ma.Nested(DestinationDisplay, allow_none=True, description="Destination display text")
-
-class SystemNotice(ma.Schema):
-    tag = ma.String(description="Notice tag")
-
-class TripPattern(ma.Schema):
-    aimedStartTime = ma.String(description="Trip planned start time")
-    aimedEndTime = ma.String(description="Trip planned end time")
-    expectedStartTime = ma.String(description="Trip expected start time")
-    expectedEndTime = ma.String(description="Trip expected end time")
-    duration = ma.Integer(description="Trip duration in seconds")
-    distance = ma.Float(description="Total trip distance in meters")
-    legs = ma.List(ma.Nested(Leg), description="Trip segments")
-    systemNotices = ma.List(ma.Nested(SystemNotice), description="System notices")
-
-class Trip(ma.Schema):
-    previousPageCursor = ma.String(description="Cursor for previous page of results")
-    nextPageCursor = ma.String(description="Cursor for next page of results")
-    tripPatterns = ma.List(ma.Nested(TripPattern), description="List of possible trip paths")
-
-class SearchPathsResponse(ma.Schema):
-    trip = ma.Nested(Trip, description="Trip information")
-
 @search_bp.route('/searchPaths', strict_slashes=False, methods=['GET'])
 @arguments(SearchPathsQuery)
-@response(SearchPathsResponse)
+#@response(SearchPathsResponse) TODO DOCUMENTATION
 @other_responses({404: 'No data found', 400: 'Missing required parameters'})
 def searchPaths(data):
     """

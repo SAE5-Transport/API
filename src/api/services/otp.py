@@ -1,6 +1,7 @@
 import requests
 from datetime import datetime
 from api.utils.functions import checkDistanceBetweenPoints
+import pytz
 
 def getStations(name):
     url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
@@ -79,29 +80,42 @@ def getStations(name):
     return {"error": "No data found"}
 
 def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datetime, arrival=False, numTrips=5):
-    url = "http://otp.clarifygdps.com/otp/transmodel/v3"
+    url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
+
+    # Determine the current timezone offset (Europe/Paris)
+    paris_tz = pytz.timezone("Europe/Paris")
+    current_offset = datetime.now(paris_tz).utcoffset()
+    offset_hours = int(current_offset.total_seconds() / 3600)
+    offset_sign = "+" if offset_hours >= 0 else "-"
+    offset_formatted = f"{offset_sign}{abs(offset_hours):02}:00"
 
     # Prepare the request
     payload = {
-        "query": "query trip($accessEgressPenalty: [PenaltyForStreetMode!], $alightSlackDefault: Int, $alightSlackList: [TransportModeSlack], $arriveBy: Boolean, $banned: InputBanned, $bicycleOptimisationMethod: BicycleOptimisationMethod, $bikeSpeed: Float, $boardSlackDefault: Int, $boardSlackList: [TransportModeSlack], $bookingTime: DateTime, $dateTime: DateTime, $filters: [TripFilterInput!], $from: Location!, $ignoreRealtimeUpdates: Boolean, $includePlannedCancellations: Boolean, $includeRealtimeCancellations: Boolean, $itineraryFilters: ItineraryFilters, $locale: Locale, $maxAccessEgressDurationForMode: [StreetModeDurationInput!], $maxDirectDurationForMode: [StreetModeDurationInput!], $maximumAdditionalTransfers: Int, $maximumTransfers: Int, $modes: Modes, $numTripPatterns: Int, $pageCursor: String, $relaxTransitGroupPriority: RelaxCostInput, $searchWindow: Int, $timetableView: Boolean, $to: Location!, $transferPenalty: Int, $transferSlack: Int, $triangleFactors: TriangleFactors, $useBikeRentalAvailabilityInformation: Boolean, $via: [TripViaLocationInput!], $waitReluctance: Float, $walkReluctance: Float, $walkSpeed: Float, $wheelchairAccessible: Boolean, $whiteListed: InputWhiteListed) {  trip(    accessEgressPenalty: $accessEgressPenalty    alightSlackDefault: $alightSlackDefault    alightSlackList: $alightSlackList    arriveBy: $arriveBy    banned: $banned    bicycleOptimisationMethod: $bicycleOptimisationMethod    bikeSpeed: $bikeSpeed    boardSlackDefault: $boardSlackDefault    boardSlackList: $boardSlackList    bookingTime: $bookingTime    dateTime: $dateTime    filters: $filters    from: $from    ignoreRealtimeUpdates: $ignoreRealtimeUpdates    includePlannedCancellations: $includePlannedCancellations    includeRealtimeCancellations: $includeRealtimeCancellations    itineraryFilters: $itineraryFilters    locale: $locale    maxAccessEgressDurationForMode: $maxAccessEgressDurationForMode    maxDirectDurationForMode: $maxDirectDurationForMode    maximumAdditionalTransfers: $maximumAdditionalTransfers    maximumTransfers: $maximumTransfers    modes: $modes    numTripPatterns: $numTripPatterns    pageCursor: $pageCursor    relaxTransitGroupPriority: $relaxTransitGroupPriority    searchWindow: $searchWindow    timetableView: $timetableView    to: $to    transferPenalty: $transferPenalty    transferSlack: $transferSlack    triangleFactors: $triangleFactors    useBikeRentalAvailabilityInformation: $useBikeRentalAvailabilityInformation    via: $via    waitReluctance: $waitReluctance    walkReluctance: $walkReluctance    walkSpeed: $walkSpeed    wheelchairAccessible: $wheelchairAccessible    whiteListed: $whiteListed  ) {    previousPageCursor    nextPageCursor    tripPatterns {      aimedStartTime      aimedEndTime      expectedEndTime      expectedStartTime      duration      distance      legs {        id        mode        aimedStartTime        aimedEndTime        expectedEndTime        expectedStartTime        realtime        distance        duration        fromPlace {          name          quay {            id            latitude            longitude          }        }        toPlace {          name          quay {            id            latitude            longitude          }        }        toEstimatedCall {          destinationDisplay {            frontText          }        }        line {          publicCode          name          id          transportMode          presentation {            colour            textColour          }        }        authority {          name          id        }        pointsOnLink {          points        }        interchangeTo {          staySeated        }        interchangeFrom {          staySeated        }        intermediateEstimatedCalls {          quay {            name            latitude            longitude          }          aimedDepartureTime          expectedDepartureTime          realtime          cancellation        }      }      systemNotices {        tag      }    }  }}",
+        "query": "query planConnection($origin: PlanLabeledLocationInput!, $destination: PlanLabeledLocationInput!, $dateTime: PlanDateTimeInput, $first: Int) {  planConnection(origin: $origin, destination: $destination, dateTime: $dateTime, first: $first) {    edges {      node {        duration        start        end        legs {          mode          start {            scheduledTime            estimated {              time              delay            }          }          end {            scheduledTime            estimated {              time              delay            }          }          realTime          realtimeState          route {            color            textColor            gtfsId            mode            shortName            longName          }          legGeometry {            points          }          from {            arrival {              scheduledTime              estimated {                time                delay              }            }            departure{              scheduledTime              estimated {                time                delay              }            }            lat            lon            name            stop {              gtfsId            }          }          to {            arrival {              scheduledTime              estimated {                time                delay              }            }            departure{              scheduledTime              estimated {                time                delay              }            }            lat            lon            name            stop {              gtfsId            }          }          intermediateStops {            name            gtfsId            lat            lon          }          fareProducts {            product {              id              name            }          }        }      }    }  }}",
         "variables": {
-            "from": {
-                "coordinates": {
-                    "latitude": departure_lat,
-                    "longitude": departure_lon
+            "origin": {
+                "location": {
+                    "coordinate": {
+                        "latitude": departure_lat,
+                        "longitude": departure_lon
+                    }
                 }
             },
-            "to": {
-                "coordinates": {
-                    "latitude": arrival_lat,
-                    "longitude": arrival_lon
+            "destination": {
+                "location": {
+                    "coordinate": {
+                        "latitude": arrival_lat,
+                        "longitude": arrival_lon
+                    }
                 }
             },
-            "dateTime": date.isoformat(),
-            "numTripPatterns": numTrips,
-            "arriveBy": arrival
+            "dateTime": {
+                "latestArrival" if arrival else "earliestDeparture": date.isoformat() + offset_formatted
+            },
+            "first": numTrips
         }
     }
+
     headers = {
         'Content-Type': 'application/json'
     }
