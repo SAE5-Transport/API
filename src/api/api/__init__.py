@@ -8,6 +8,19 @@ from api.utils.config import app_host, app_port
 
 apifairy = APIFairy()
 
+@apifairy.process_apispec
+def process_apispec(apispec):
+    '''
+        Process apispec
+    '''
+
+    # Add servers
+    apispec['servers'].append({
+        'url': f'http://api.hexatransit.clarifygdps.com/',
+        'description': 'Production server'
+    })
+    
+    return apispec
 
 def create_app():
     '''
@@ -21,6 +34,7 @@ def create_app():
     app.config['APIFAIRY_VERSION'] = '1.0'
     app.config['APIFAIRY_UI'] = "swagger_ui"
     app.config['APIFAIRY_UI_PATH'] = "/"
+
     apifairy.init_app(app)
 
     return app
