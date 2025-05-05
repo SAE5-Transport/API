@@ -153,3 +153,25 @@ def getIncidentsFromLines(lines):
             return response.json()["data"]
     
     return {"error": "No data found"}
+
+def getTickets():
+    url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
+
+    # Prepare the request
+    payload = {
+        "query": "query tickets {  ticketTypes {    currency    fareId    price    zones  }}"
+    }
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    # Send the request
+    response = requests.request("POST", url, headers=headers, json=payload)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        if 'data' in response.json():
+            return response.json()["data"]
+        
+    return {"error": "No data found"}

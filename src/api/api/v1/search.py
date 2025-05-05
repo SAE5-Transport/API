@@ -3,7 +3,7 @@ from flask_marshmallow import Marshmallow
 import zstandard as zstd
 from datetime import datetime
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getTickets
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -238,3 +238,17 @@ def incidentsOnLines(data):
             return incidents
     else:
         return {"error": "Missing required parameters"}, 400
+
+@search_bp.route('/tickets', strict_slashes=False, methods=['GET'])
+@other_responses({404: 'No data found'})
+def tickets():
+    """
+    Endpoint to get ticket information.
+    """
+
+    tickets = getTickets()
+
+    if "error" in tickets:
+        return tickets, 404
+
+    return tickets
