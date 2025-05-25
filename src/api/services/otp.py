@@ -159,7 +159,7 @@ def getNextDeparturesByStation(id, startTime, numOfDepartures, numberOfDeparture
 
     # Prepare the request
     payload = {
-        "query": "query prochainPassageByStation($id: String!, $startTime: DateTime, $numOfDepartures: Int, $includeCancelled: Boolean, $numberOfDeparturesPerLineAndDestinationDisplay: Int) {  quay(id: $id) {    name    estimatedCalls(startTime: $startTime, numberOfDeparturesPerLineAndDestinationDisplay: $numberOfDeparturesPerLineAndDestinationDisplay, includeCancelledTrips: $includeCancelled, numberOfDepartures: $numOfDepartures) {      aimedDepartureTime      expectedDepartureTime      realtime      serviceJourney {        line {          name        }        journeyPattern {          name        }        passingTimes {          quay {            name            id          }        }      }    }  }}",
+        "query": "query prochainPassageByStation($id: String!, $startTime: DateTime, $numOfDepartures: Int, $includeCancelled: Boolean, $numberOfDeparturesPerLineAndDestinationDisplay: Int) {  quay(id: $id) {    name    estimatedCalls(startTime: $startTime, numberOfDeparturesPerLineAndDestinationDisplay: $numberOfDeparturesPerLineAndDestinationDisplay, includeCancelledTrips: $includeCancelled, numberOfDepartures: $numOfDepartures) {      aimedDepartureTime      expectedDepartureTime      realtime      serviceJourney {        line {          name          id        }        journeyPattern {          name        }        passingTimes {          quay {            name            id          }        }      }    }  }}",
         "variables": {
             "id": id,
             "startTime": startTime.isoformat(),
