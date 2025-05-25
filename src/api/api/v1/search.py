@@ -3,7 +3,7 @@ from flask_marshmallow import Marshmallow
 import zstandard as zstd
 from datetime import datetime
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines, getTickets
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getTickets, getNextDeparturesByStation
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -236,6 +236,39 @@ def incidentsOnLines(data):
             return Response(incidents, mimetype='application/zstd')
         else:
             return incidents
+    else:
+        return {"error": "Missing required parameters"}, 400
+    
+class nextDepartureByStationQuery(ma.Schema):
+    id: str = ma.String(required=True, description="Station ID")
+    startTime: datetime = ma.DateTime(description="Start time for the next departure", load_default=datetime.now())
+    numOfDepartures: int = ma.Integer(description="Number of departures to return", load_default=5)
+    numberOfDeparturesPerLineAndDestinationDisplay: int = ma.Integer(description="Number of departures per line and destination display", load_default=1)
+    includeCancelled: bool = ma.Boolean(description="If true, include cancelled departures", load_default=False)
+
+@search_bp.route('/nextDepartureByStation', strict_slashes=False, methods=['GET'])
+@arguments(nextDepartureByStationQuery)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def nextDepartureByStation(data):
+    """
+    Endpoint to get the next departures from a station.
+    """
+
+    # Check if the required parameters are present
+    if data.get('id'):
+        # Get the next departures
+        departures = getNextDeparturesByStation(
+            data['id'],
+            data['startTime'],
+            data['numOfDepartures'],
+            data['numberOfDeparturesPerLineAndDestinationDisplay'],
+            data['includeCancelled']
+        )
+
+        if "error" in departures:
+            return departures, 404
+        
+        return departures
     else:
         return {"error": "Missing required parameters"}, 400
 

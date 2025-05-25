@@ -154,6 +154,35 @@ def getIncidentsFromLines(lines):
     
     return {"error": "No data found"}
 
+def getNextDeparturesByStation(id, startTime, numOfDepartures, numberOfDeparturesPerLineDestinationDisplay, includeCancelled):
+    url = "http://otp.clarifygdps.com/otp/transmodel/v3"
+
+    # Prepare the request
+    payload = {
+        "query": "query prochainPassageByStation($id: String!, $startTime: DateTime, $numOfDepartures: Int, $includeCancelled: Boolean, $numberOfDeparturesPerLineAndDestinationDisplay: Int) {  quay(id: $id) {    name    estimatedCalls(startTime: $startTime, numberOfDeparturesPerLineAndDestinationDisplay: $numberOfDeparturesPerLineAndDestinationDisplay, includeCancelledTrips: $includeCancelled, numberOfDepartures: $numOfDepartures) {      aimedDepartureTime      expectedDepartureTime      realtime      serviceJourney {        line {          name        }        journeyPattern {          name        }        passingTimes {          quay {            name            id          }        }      }    }  }}",
+        "variables": {
+            "id": id,
+            "startTime": startTime.isoformat(),
+            "numOfDepartures": numOfDepartures,
+            "numberOfDeparturesPerLineDestinationDisplay": numberOfDeparturesPerLineDestinationDisplay,
+            "includeCancelled": includeCancelled
+        }
+    }
+    
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    # Send the request
+    response = requests.request("POST", url, headers=headers, json=payload)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        if 'data' in response.json():
+            return response.json()["data"]
+    
+    return {"error": "No data found"}
+
 def getTickets():
     url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
 
