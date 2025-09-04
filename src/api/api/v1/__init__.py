@@ -1,0 +1,57 @@
+'''
+    ENDPOINTS
+'''
+from apifairy import response, other_responses, arguments
+from flask import Blueprint, jsonify
+from flask_marshmallow import Marshmallow
+from .search import search_bp
+from .friend import friend_bp
+from .user import user_bp
+from .trajet import trajet_bp
+from .company import company_bp
+from .agent import agent_bp
+from .qrcodeGenerate import qrcode_bp
+from .walkcoord import walk_bp
+from ...services.postgres import health as pghealth
+from ...services.mongo import health as mongohealth
+
+v1_bp = Blueprint("v1", __name__, url_prefix='/v1')
+v1_bp.register_blueprint(search_bp)
+v1_bp.register_blueprint(friend_bp)
+v1_bp.register_blueprint(user_bp)
+v1_bp.register_blueprint(company_bp)
+v1_bp.register_blueprint(agent_bp)
+v1_bp.register_blueprint(trajet_bp)
+v1_bp.register_blueprint(qrcode_bp)
+v1_bp.register_blueprint(walk_bp)
+
+ma = Marshmallow(search_bp)
+
+
+class HealthResponse(ma.Schema):
+    postegresql = ma.Boolean(description="Connection to postgresql is ok?")
+    mongodb = ma.Boolean(description="Connection to mongodb is ok?")
+
+
+@v1_bp.route('/health', strict_slashes=False, methods=['GET'])
+@response(HealthResponse)
+def healthcheck():
+    '''
+        Check if all services are connected
+    '''
+    main_data = {
+        "postegresql": pghealth(),
+        "mongodb": mongohealth()
+    }
+    return main_data
+
+
+@v1_bp.route('/swagger.json', strict_slashes=False, methods=['GET'])
+def swagger():
+    '''
+        Swagger JSON
+    '''
+    from ..__init__ import apifairy
+    apifairy.apispec['info']['title'] = 'HexaTransit API'
+    apifairy.apispec['info']['version'] = '1.0'
+    return jsonify(apifairy.apispec)
