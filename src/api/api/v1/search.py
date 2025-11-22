@@ -3,7 +3,7 @@ from flask_marshmallow import Marshmallow
 import zstandard as zstd
 from datetime import datetime
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines, getTickets, getNextDeparturesByStation
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -31,13 +31,8 @@ class OTPStation(ma.Schema):
     name: str = ma.String(description="Station name")
     stops: list = ma.List(ma.Nested(Stops), description="Child stops")
 
-class FindLocationResponse(ma.Schema):
-    otp: list = ma.List(ma.Nested(OTPStation), description="OTP locations")
-    osm: list = ma.List(ma.Dict, description="OSM locations")
-
 @search_bp.route('/findLocation', strict_slashes=False, methods=['GET'])
 @arguments(FindLocationQuery)
-@response(FindLocationResponse)
 @other_responses({404: 'No data found', 400: 'No name provided'})
 def findLocation(data: dict):
     """
@@ -72,12 +67,8 @@ class FindLocationByCoordinatesQuery(ma.Schema):
     lat: float = ma.Float(required=True, description="Latitude")
     lon: float = ma.Float(required=True, description="Longitude")
 
-class FindLocationByCoordinatesResponse(ma.Schema):
-    osm: list = ma.List(ma.Dict, description="OSM locations")
-
 @search_bp.route('/findLocationByCoordinates', strict_slashes=False, methods=['GET'])
 @arguments(FindLocationByCoordinatesQuery)
-@response(FindLocationByCoordinatesResponse)
 @other_responses({400: 'No coordinates provided'})
 def findLocationByCoordinates(data: dict):
     """
@@ -183,12 +174,8 @@ class LineOnIncident(ma.Schema):
     presentation = ma.Nested(AffectedLinePresentation, description="Line presentation")
     situations = ma.List(ma.Nested(Incident), description="Incidents")
 
-class IncidentsOnLineResponse(ma.Schema):
-    line: str = ma.Nested(LineOnIncident, description="Line information")
-
 @search_bp.route('/incidentsOnLine', strict_slashes=False, methods=['GET'])
 @arguments(IncidentsOnLineQuery)
-@response(IncidentsOnLineResponse)
 @other_responses({404: 'No data found', 400: 'Missing required parameters'})
 def incidentsOnLine(data):
     """
@@ -271,17 +258,3 @@ def nextDepartureByStation(data):
         return departures
     else:
         return {"error": "Missing required parameters"}, 400
-
-@search_bp.route('/tickets', strict_slashes=False, methods=['GET'])
-@other_responses({404: 'No data found'})
-def tickets():
-    """
-    Endpoint to get ticket information.
-    """
-
-    tickets = getTickets()
-
-    if "error" in tickets:
-        return tickets, 404
-
-    return tickets
