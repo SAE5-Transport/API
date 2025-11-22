@@ -5,6 +5,8 @@ import pytz
 
 def getStations(name):
     url = f"http://motis.clarifygdps.com/api/v1/geocode?text={name}&language=fr&type=STOP"
+    
+    print(url)
 
     # Prepare the request
     headers = {
@@ -21,25 +23,42 @@ def getStations(name):
             data = response.json()
 
             finalData = []
-
-            modes = []
             
-            nextDeparturesData = getNextDeparturesByStation(data["id"], datetime.now(pytz.timezone('Europe/Paris')).astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), 255, True)
-
             # Get all the lines based on the lines passing through the stops
             linesDataSet = {}
-            for nextDeparture in nextDeparturesData:
-                if nextDeparture["routeId"] not in linesDataSet:
-                    linesDataSet[nextDeparture["routeId"]] = {
-                        "mode": nextDeparture["mode"],
-                        "color": nextDeparture["routeColor"],
-                        "textColor": nextDeparture["routeTextColor"],
-                        "shortName": nextDeparture["routeShortName"],
-                        "longName": nextDeparture["routeLongName"],
-                    }
-
-            for line in linesDataSet.values():
-                modes.append(line["mode"])
+            
+            # Fetch next departures for each station and enrich station data
+            for station in data:
+                # Initialize routes list for this station if not present
+                if "routes" not in station:
+                    station["routes"] = []
+                
+                # Get next departures for this station
+                nextDeparturesData = getNextDeparturesByStation(
+                    station["id"], 
+                    datetime.now(pytz.timezone('Europe/Paris')).astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), 
+                    255, 
+                    True
+                )
+                
+                # Process departures if valid response
+                if isinstance(nextDeparturesData, list):
+                    for nextDeparture in nextDeparturesData:
+                        if nextDeparture.get("routeId") and nextDeparture["routeId"] not in linesDataSet:
+                            linesDataSet[nextDeparture["routeId"]] = {
+                                "mode": nextDeparture.get("mode", "OTHER"),
+                                "color": nextDeparture.get("routeColor", "#000000"),
+                                "textColor": nextDeparture.get("routeTextColor", "#FFFFFF"),
+                                "shortName": nextDeparture.get("routeShortName", ""),
+                                "longName": nextDeparture.get("routeLongName", ""),
+                            }
+                            # Add route to station's routes
+                            station["routes"].append(linesDataSet[nextDeparture["routeId"]])
+                            
+                            # Change name to place name
+                            place = nextDeparture.get("place")
+                            if place:
+                                station["name"] = place.get("name", "---")
 
             # Order the stations
             orders = {
@@ -74,63 +93,45 @@ def getStations(name):
                 "METRO": 28,
             }
 
-            # Build a priority map from stopId -> best mode (lowest order value) using nextDeparturesData
-            stop_priority = {}
-            if isinstance(nextDeparturesData, list):
-                default_priority = max(orders.values()) + 1
-                for nd in nextDeparturesData:
-                    place = nd.get("place", {}) if isinstance(nd, dict) else {}
-                    stop_id = place.get("stopId") or place.get("id") or nd.get("stopId")
-                    mode = nd.get("mode")
-                    if not stop_id or not mode:
-                        continue
-                    pr = orders.get(mode, default_priority)
-                    prev = stop_priority.get(stop_id)
-                    if prev is None or pr < prev:
-                        stop_priority[stop_id] = pr
-
-            # Assign a mode to each station using the stop_priority map (fallback to routes in stops if needed)
-            default_priority = max(orders.values()) + 1
+            # Get highest mode for each station and sort routes
             for station in data:
-                station_stop_ids = []
-                for stop in station.get("stops", []):
-                    sid = stop.get("stopId") or stop.get("id")
-                    if sid:
-                        station_stop_ids.append(sid)
-
-                # collect priorities from nextDeparturesData
-                station_modes = [stop_priority[sid] for sid in station_stop_ids if sid in stop_priority]
-
-                # fallback: derive from stop.routes if no nextDepartures info found
-                if not station_modes:
-                    station_modes = [
-                        orders[line["mode"]]
-                        for stop in station.get("stops", [])
-                        for line in stop.get("routes", [])
-                        if "mode" in line and line["mode"] in orders
-                    ]
-
+                # Sort routes by mode priority, then by short name
+                station["routes"] = sorted(
+                    station.get("routes", []), 
+                    key=lambda route: (
+                        orders.get(route.get("mode", "OTHER"), max(orders.values()) + 1),
+                        route.get("shortName", "").lower()
+                    )
+                )
+                
+                station_modes = [orders[line["mode"]] for line in station.get("routes", []) if "mode" in line and line["mode"] in orders]
                 if station_modes:
                     station["mode"] = min(station_modes)
                 else:
-                    station["mode"] = default_priority
+                    station["mode"] = max(orders.values()) + 1  # Assign a default mode if none found
 
-            # Sort stations by computed mode
-            data.sort(key=lambda x: x.get("mode", default_priority))
+            # Sort stations by mode
+            data.sort(key=lambda x: x.get("mode", max(orders.values()) + 1))
 
             # Group stations by their name
             for station in data:
                 found = False
                 for x in finalData:
-                    if x.get("name") == station.get("name") and checkDistanceBetweenPoints(x.get("lat"), x.get("lon"), station.get("lat"), station.get("lon"), 1):
-                        # Merge modes if present
-                        if "modes" in station:
-                            if "modes" not in x:
-                                x["modes"] = []
-                            x["modes"] = list(set(x["modes"] + station["modes"]))
+                    if x["name"] == station["name"] and checkDistanceBetweenPoints(x["lat"], x["lon"], station["lat"], station["lon"], 1):
+                        # Merge routes from duplicate stations
+                        for route in station.get("routes", []):
+                            if route not in x.get("routes", []):
+                                x.setdefault("routes", []).append(route)
+                        # Re-sort routes after merging by mode priority, then by short name
+                        x["routes"] = sorted(
+                            x.get("routes", []), 
+                            key=lambda route: (
+                                orders.get(route.get("mode", "OTHER"), max(orders.values()) + 1),
+                                route.get("shortName", "").lower()
+                            )
+                        )
                         found = True
                         break
-
                 if not found:
                     finalData.append(station)
 
@@ -140,7 +141,10 @@ def getStations(name):
     return {"error": "No data found"}
 
 def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datetime, arrival=False, numTrips=5):
-    url = f"http://motis.clarifygdps.com/api/v5/plan?time={date.isoformat()}&fromPlace={departure_lat},{departure_lon}&toPlace={arrival_lat},{arrival_lon}&withFares=true&fastestDirectFactor=1.5&joinInterlinedLegs=false&maxMatchingDistance=250&arriveBy={arrival}&numItineraries={numTrips}"
+    # Format the date to ISO 8601 format with Z suffix
+    formatted_date = date.strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    url = f"http://motis.clarifygdps.com/api/v5/plan?time={formatted_date}&fromPlace={departure_lat},{departure_lon}&toPlace={arrival_lat},{arrival_lon}&withFares=true&fastestDirectFactor=1.5&joinInterlinedLegs=false&maxMatchingDistance=250&arriveBy={arrival}&numItineraries={numTrips}"
 
     headers = {
         'Content-Type': 'application/json'
@@ -164,18 +168,23 @@ def getIncidentsFromLines(lines):
     return {"error": "No data found"}
 
 def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled):
-    url = f"http://motis.clarifygdps.com/api/v5/stoptimes?stopId={id}&time={startTime}&arriveBy=false&n={numOfDepartures}&exactRadius=false&radius=200&language=fr&withScheduledSkippedStops={includeCancelled}"
+    # Format the date to ISO 8601 format with Z suffix
+    formatted_date = startTime.strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    url = f"http://motis.clarifygdps.com/api/v5/stoptimes?stopId={id}&time={formatted_date}&arriveBy=false&n={numOfDepartures}&exactRadius=false&radius=200&language=fr&withScheduledSkippedStops={includeCancelled}"
     
     headers = {
         'Content-Type': 'application/json'
     }
+    
+    print(url)
 
     # Send the request
     response = requests.request("GET", url, headers=headers)
 
     # Check if the request was successful
     if response.status_code == 200:
-        if response.json()["stopTimes"] > 0:
+        if len(response.json()["stopTimes"]) > 0:
             return response.json()["stopTimes"]
     
     return {"error": "No data found"}

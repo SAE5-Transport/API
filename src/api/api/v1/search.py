@@ -97,7 +97,7 @@ class SearchPathsQuery(ma.Schema):
     departure_lon: float = ma.Float(required=True, description="Departure Longitude")
     arrival_lat: float = ma.Float(required=True, description="Arrival Latitude")
     arrival_lon: float = ma.Float(required=True, description="Arrival Longitude")
-    start: datetime = ma.DateTime(description="Departure time or arrival time (if set)", load_default=datetime.today())
+    start: datetime = ma.DateTime(description="Departure time or arrival time (if set)", format='iso8601', load_default=datetime.now())
     arrival: bool = ma.Boolean(description="If true, the start time is the arrival time", load_default=False)
     numTrips: int = ma.Integer(description="Number of trips to return", load_default=5)
 
@@ -230,7 +230,6 @@ class nextDepartureByStationQuery(ma.Schema):
     id: str = ma.String(required=True, description="Station ID")
     startTime: datetime = ma.DateTime(description="Start time for the next departure", load_default=datetime.now())
     numOfDepartures: int = ma.Integer(description="Number of departures to return", load_default=5)
-    numberOfDeparturesPerLineAndDestinationDisplay: int = ma.Integer(description="Number of departures per line and destination display", load_default=1)
     includeCancelled: bool = ma.Boolean(description="If true, include cancelled departures", load_default=False)
 
 @search_bp.route('/nextDepartureByStation', strict_slashes=False, methods=['GET'])
@@ -248,7 +247,6 @@ def nextDepartureByStation(data):
             data['id'],
             data['startTime'],
             data['numOfDepartures'],
-            data['numberOfDeparturesPerLineAndDestinationDisplay'],
             data['includeCancelled']
         )
 
