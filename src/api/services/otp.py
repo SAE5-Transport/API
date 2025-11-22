@@ -4,70 +4,130 @@ from api.utils.functions import checkDistanceBetweenPoints
 import pytz
 
 def getStations(name):
-    url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
+    url = f"http://motis.clarifygdps.com/api/v1/geocode?text={name}&language=fr&type=STOP"
 
     # Prepare the request
-    payload = {
-        "query": "query getStations($name: String) { stations(name: $name) { name, lat, lon, gtfsId, stops { gtfsId, routes { gtfsId, longName, shortName, color, textColor, mode } } } }",
-        "variables": {
-            "name": name
-        }
-    }
     headers = {
         'Content-Type': 'application/json'
     }
 
     # Send the request
-    response = requests.request("POST", url, headers=headers, json=payload)
+    response = requests.request("GET", url, headers=headers)
 
     # Check if the request was successful
     if response.status_code == 200:
         # Check if the data is present
-        if 'data' in response.json():
-            data = response.json()['data']['stations']
+        if len(response.json()) > 0:
+            data = response.json()
 
             finalData = []
 
             modes = []
+            
+            nextDeparturesData = getNextDeparturesByStation(data["id"], datetime.now(pytz.timezone('Europe/Paris')).astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), 255, True)
 
             # Get all the lines based on the lines passing through the stops
             linesDataSet = {}
-            for station in data:
-                for stop in station["stops"]:
-                    for route in stop["routes"]:
-                        if route["gtfsId"] not in linesDataSet:
-                            linesDataSet[route["gtfsId"]] = route
+            for nextDeparture in nextDeparturesData:
+                if nextDeparture["routeId"] not in linesDataSet:
+                    linesDataSet[nextDeparture["routeId"]] = {
+                        "mode": nextDeparture["mode"],
+                        "color": nextDeparture["routeColor"],
+                        "textColor": nextDeparture["routeTextColor"],
+                        "shortName": nextDeparture["routeShortName"],
+                        "longName": nextDeparture["routeLongName"],
+                    }
 
             for line in linesDataSet.values():
                 modes.append(line["mode"])
 
             # Order the stations
             orders = {
-                'SUBWAY': 0,
-                'RAIL': 1,
-                'TRAM': 2,
-                'FERRY': 3,
-                'CABLE_CAR': 4,
-                'BUS': 5,
+                "WALK": 0,
+                "BIKE": 1,
+                "RENTAL": 2,
+                "CAR": 3,
+                "CAR_PARKING": 4,
+                "CAR_DROPOFF": 5,
+                "ODM": 6,
+                "RIDE_SHARING": 7,
+                "FLEX": 8,
+                "TRANSIT": 9,
+                "TRAM": 10,
+                "SUBWAY": 11,
+                "FERRY": 12,
+                "AIRPLANE": 13,
+                "SUBURBAN": 14,
+                "BUS": 15,
+                "COACH": 16,
+                "RAIL": 17,
+                "HIGHSPEED_RAIL": 18,
+                "LONG_DISTANCE": 19,
+                "NIGHT_RAIL": 20,
+                "REGIONAL_FAST_RAIL": 21,
+                "REGIONAL_RAIL": 22,
+                "CABLE_CAR": 23,
+                "FUNICULAR": 24,
+                "AERIAL_LIFT": 25,
+                "OTHER": 26,
+                "AREAL_LIFT": 27,
+                "METRO": 28,
             }
 
-            # Get highest mode for each station
+            # Build a priority map from stopId -> best mode (lowest order value) using nextDeparturesData
+            stop_priority = {}
+            if isinstance(nextDeparturesData, list):
+                default_priority = max(orders.values()) + 1
+                for nd in nextDeparturesData:
+                    place = nd.get("place", {}) if isinstance(nd, dict) else {}
+                    stop_id = place.get("stopId") or place.get("id") or nd.get("stopId")
+                    mode = nd.get("mode")
+                    if not stop_id or not mode:
+                        continue
+                    pr = orders.get(mode, default_priority)
+                    prev = stop_priority.get(stop_id)
+                    if prev is None or pr < prev:
+                        stop_priority[stop_id] = pr
+
+            # Assign a mode to each station using the stop_priority map (fallback to routes in stops if needed)
+            default_priority = max(orders.values()) + 1
             for station in data:
-                station_modes = [orders[line["mode"]] for stop in station["stops"] for line in stop["routes"] if "mode" in line and line["mode"] in orders]
+                station_stop_ids = []
+                for stop in station.get("stops", []):
+                    sid = stop.get("stopId") or stop.get("id")
+                    if sid:
+                        station_stop_ids.append(sid)
+
+                # collect priorities from nextDeparturesData
+                station_modes = [stop_priority[sid] for sid in station_stop_ids if sid in stop_priority]
+
+                # fallback: derive from stop.routes if no nextDepartures info found
+                if not station_modes:
+                    station_modes = [
+                        orders[line["mode"]]
+                        for stop in station.get("stops", [])
+                        for line in stop.get("routes", [])
+                        if "mode" in line and line["mode"] in orders
+                    ]
+
                 if station_modes:
                     station["mode"] = min(station_modes)
                 else:
-                    station["mode"] = max(orders.values()) + 1  # Assign a default mode if none found
+                    station["mode"] = default_priority
 
-            # Sort stations by mode
-            data.sort(key=lambda x: x["mode"])
+            # Sort stations by computed mode
+            data.sort(key=lambda x: x.get("mode", default_priority))
 
             # Group stations by their name
             for station in data:
                 found = False
                 for x in finalData:
-                    if x["name"] == station["name"] and checkDistanceBetweenPoints(x["lat"], x["lon"], station["lat"], station["lon"], 1):
-                        x["stops"] += station["stops"]
+                    if x.get("name") == station.get("name") and checkDistanceBetweenPoints(x.get("lat"), x.get("lon"), station.get("lat"), station.get("lon"), 1):
+                        # Merge modes if present
+                        if "modes" in station:
+                            if "modes" not in x:
+                                x["modes"] = []
+                            x["modes"] = list(set(x["modes"] + station["modes"]))
                         found = True
                         break
 
@@ -80,127 +140,42 @@ def getStations(name):
     return {"error": "No data found"}
 
 def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datetime, arrival=False, numTrips=5):
-    url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
-
-    # Determine the current timezone offset (Europe/Paris)
-    paris_tz = pytz.timezone("Europe/Paris")
-    current_offset = datetime.now(paris_tz).utcoffset()
-    offset_hours = int(current_offset.total_seconds() / 3600)
-    offset_sign = "+" if offset_hours >= 0 else "-"
-    offset_formatted = f"{offset_sign}{abs(offset_hours):02}:00"
-
-    # Prepare the request
-    payload = {
-        "query": "query planConnection($origin: PlanLabeledLocationInput!, $destination: PlanLabeledLocationInput!, $dateTime: PlanDateTimeInput, $first: Int) {  planConnection(origin: $origin, destination: $destination, dateTime: $dateTime, first: $first) {    edges {      node {        duration        start        end        legs {          mode          duration          start {            scheduledTime            estimated {              time              delay            }          }          end {            scheduledTime            estimated {              time              delay            }          }          realTime          realtimeState          route {            color            textColor            gtfsId            mode            shortName            longName          }          legGeometry {            points          }          from {            arrival {              scheduledTime              estimated {                time                delay              }            }            departure{              scheduledTime              estimated {                time                delay              }            }            lat            lon            name            stop {              gtfsId            }          }          to {            arrival {              scheduledTime              estimated {                time                delay              }            }            departure{              scheduledTime              estimated {                time                delay              }            }            lat            lon            name            stop {              gtfsId            }          }          intermediateStops {            name            gtfsId            lat            lon          }          fareProducts {            product {              id              name            }          }        }      }    }  }}",
-        "variables": {
-            "origin": {
-                "location": {
-                    "coordinate": {
-                        "latitude": departure_lat,
-                        "longitude": departure_lon
-                    }
-                }
-            },
-            "destination": {
-                "location": {
-                    "coordinate": {
-                        "latitude": arrival_lat,
-                        "longitude": arrival_lon
-                    }
-                }
-            },
-            "dateTime": {
-                "latestArrival" if arrival else "earliestDeparture": date.isoformat() + offset_formatted
-            },
-            "first": numTrips
-        }
-    }
+    url = f"http://motis.clarifygdps.com/api/v5/plan?time={date.isoformat()}&fromPlace={departure_lat},{departure_lon}&toPlace={arrival_lat},{arrival_lon}&withFares=true&fastestDirectFactor=1.5&joinInterlinedLegs=false&maxMatchingDistance=250&arriveBy={arrival}&numItineraries={numTrips}"
 
     headers = {
         'Content-Type': 'application/json'
     }
 
     # Send the request
-    response = requests.request("POST", url, headers=headers, json=payload)
+    response = requests.request("GET", url, headers=headers)
 
     # Check if the request was successful
     if response.status_code == 200:
-        if 'data' in response.json():
-            return response.json()["data"]
+        if len(response.json()["itineraries"]) > 0:
+            return response.json()["itineraries"]
     
     return {"error": "No data found"}
 
 def getIncidentsFromLines(lines):
-    url = "http://otp.clarifygdps.com/otp/transmodel/v3"
-
-    # Prepare the request
-    payload = {
-        "query": "query line($ids: [ID]) {  lines(ids: $ids) {    id    publicCode    name    presentation {      colour      textColour    }    situations {      id      severity      summary {        value      }      description {        value      }      validityPeriod {        startTime        endTime      }      affects {        ... on AffectedLine {          line {            id            publicCode            name            presentation {              colour              textColour            }          }        }        ... on AffectedStopPlace {          quay {            name            id            latitude            longitude          }          stopPlace {            name            id            latitude            longitude          }        }      }    }  }}",
-        "variables": {
-            "ids": lines
-        }
-    }
-    headers = {
-        'Content-Type': 'application/json'
-    }
-
     # Send the request
-    response = requests.request("POST", url, headers=headers, json=payload)
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        if 'data' in response.json():
-            return response.json()["data"]
+    
+    # TODO: Implement incident fetching logic using GTFS-RT Alerts
     
     return {"error": "No data found"}
 
-def getNextDeparturesByStation(id, startTime, numOfDepartures, numberOfDeparturesPerLineDestinationDisplay, includeCancelled):
-    url = "http://otp.clarifygdps.com/otp/transmodel/v3"
-
-    # Prepare the request
-    payload = {
-        "query": "query prochainPassageByStation($id: String!, $startTime: DateTime, $numOfDepartures: Int, $includeCancelled: Boolean, $numberOfDeparturesPerLineAndDestinationDisplay: Int) {  quay(id: $id) {    name    estimatedCalls(startTime: $startTime, numberOfDeparturesPerLineAndDestinationDisplay: $numberOfDeparturesPerLineAndDestinationDisplay, includeCancelledTrips: $includeCancelled, numberOfDepartures: $numOfDepartures) {      aimedDepartureTime      expectedDepartureTime      realtime      serviceJourney {        line {          name          id        }        journeyPattern {          name        }        passingTimes {          quay {            name            id          }        }      }    }  }}",
-        "variables": {
-            "id": id,
-            "startTime": startTime.isoformat(),
-            "numOfDepartures": numOfDepartures,
-            "numberOfDeparturesPerLineDestinationDisplay": numberOfDeparturesPerLineDestinationDisplay,
-            "includeCancelled": includeCancelled
-        }
-    }
+def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled):
+    url = f"http://motis.clarifygdps.com/api/v5/stoptimes?stopId={id}&time={startTime}&arriveBy=false&n={numOfDepartures}&exactRadius=false&radius=200&language=fr&withScheduledSkippedStops={includeCancelled}"
     
     headers = {
         'Content-Type': 'application/json'
     }
 
     # Send the request
-    response = requests.request("POST", url, headers=headers, json=payload)
+    response = requests.request("GET", url, headers=headers)
 
     # Check if the request was successful
     if response.status_code == 200:
-        if 'data' in response.json():
-            return response.json()["data"]
+        if response.json()["stopTimes"] > 0:
+            return response.json()["stopTimes"]
     
-    return {"error": "No data found"}
-
-def getTickets():
-    url = "http://otp.clarifygdps.com/otp/routers/default/index/graphql"
-
-    # Prepare the request
-    payload = {
-        "query": "query tickets {  ticketTypes {    currency    fareId    price    zones  }}"
-    }
-
-    headers = {
-        'Content-Type': 'application/json'
-    }
-
-    # Send the request
-    response = requests.request("POST", url, headers=headers, json=payload)
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        if 'data' in response.json():
-            return response.json()["data"]
-        
     return {"error": "No data found"}
