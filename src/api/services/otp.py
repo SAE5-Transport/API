@@ -168,7 +168,8 @@ def getIncidentsFromLines(lines):
         lines: List of line/route IDs to filter alerts for
     
     Returns:
-        List of formatted alerts matching the requested lines
+        List of lines with their associated alerts grouped by line ID
+        Format: [{"id": "IDFM:C01730", "name": "IDFM:C01730", "situations": [...]}, ...]
     """
     try:
         # GTFS-RT alerts endpoint - adjust URL to your GTFS-RT provider
@@ -184,9 +185,6 @@ def getIncidentsFromLines(lines):
         # Parse the protobuf response
         feed = gtfs_realtime_pb2.FeedMessage()
         feed.ParseFromString(response.content)
-        
-        # Parse GTFS-RT alerts and filter by lines
-        formatted_alerts = []
         
         # Group alerts by base ID (without timestamp suffix)
         alert_groups = {}
@@ -213,7 +211,7 @@ def getIncidentsFromLines(lines):
             
             # Extract base alert ID (remove timestamp suffix if present)
             # Format: "disruption_id:start_time:end_time"
-            alert_id = entity.id if entity.id else f"alert-{len(formatted_alerts)}"
+            alert_id = entity.id if entity.id else f"alert-{len(alert_groups)}"
             base_id = alert_id.split(':')[0] if ':' in alert_id else alert_id
             
             # Group by base ID to merge multiple time periods
@@ -226,6 +224,9 @@ def getIncidentsFromLines(lines):
             else:
                 # Merge matching lines
                 alert_groups[base_id]['matching_lines'].update(matching_lines)
+        
+        # Group alerts by line ID
+        lines_with_alerts = {}
         
         # Process grouped alerts
         for base_id, alert_data in alert_groups.items():
@@ -293,7 +294,7 @@ def getIncidentsFromLines(lines):
                     ).strftime("%Y-%m-%dT%H:%M:%SZ")
             
             # Build situations list from informed entities (only for matching lines)
-            situations = []
+            situations_data = []
             for informed_entity in alert.informed_entity:
                 situation = {}
                 
@@ -310,17 +311,23 @@ def getIncidentsFromLines(lines):
                     situation["tripId"] = informed_entity.trip.trip_id
                 
                 if situation:
-                    situations.append(situation)
+                    situations_data.append(situation)
             
-            # Create an alert for each matching line
+            # Create alert structure for each matching line
             for line_id in matching_lines:
-                # Try to get line name and color from your data
-                # You can fetch this from the nextDepartures data or from a separate API
-                line_name = line_id
-                line_color = "#000000"  # Default color
+                # Initialize line entry if not exists
+                if line_id not in lines_with_alerts:
+                    lines_with_alerts[line_id] = {
+                        "id": line_id,
+                        "name": line_id,
+                        "presentation": {
+                            "colour": "#000000"  # Default color, can be enriched later
+                        },
+                        "situations": []
+                    }
                 
-                # Format the alert
-                formatted_alert = {
+                # Format the alert situation
+                situation = {
                     "id": f"{alert_id}-{line_id}",
                     "severity": severity,
                     "summary": [
@@ -334,16 +341,16 @@ def getIncidentsFromLines(lines):
                         }
                     ],
                     "validityPeriod": validity_period,
-                    "situations": [s for s in situations if s.get("routeId") == line_id or "routeId" not in s],
-                    "name": line_name,
-                    "presentation": {
-                        "colour": line_color
-                    }
+                    "routeId": line_id
                 }
                 
-                formatted_alerts.append(formatted_alert)
+                # Add the situation to the line's situations list
+                lines_with_alerts[line_id]["situations"].append(situation)
         
-        return formatted_alerts if formatted_alerts else {"error": "No alerts found for specified lines"}
+        # Convert dictionary to list
+        result = list(lines_with_alerts.values())
+        
+        return result if result else {"error": "No alerts found for specified lines"}
     
     except requests.exceptions.RequestException as e:
         return {"error": f"Request failed: {str(e)}"}
