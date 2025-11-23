@@ -5,8 +5,6 @@ import pytz
 
 def getStations(name):
     url = f"http://motis.clarifygdps.com/api/v1/geocode?text={name}&language=fr&type=STOP"
-    
-    print(url)
 
     # Prepare the request
     headers = {
@@ -168,16 +166,17 @@ def getIncidentsFromLines(lines):
     return {"error": "No data found"}
 
 def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled):
-    # Format the date to ISO 8601 format with Z suffix
-    formatted_date = startTime.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # If startTime is a datetime object, format it; otherwise use as-is
+    if isinstance(startTime, datetime):
+        formatted_date = startTime.strftime("%Y-%m-%dT%H:%M:%SZ")
+    else:
+        formatted_date = startTime
     
     url = f"http://motis.clarifygdps.com/api/v5/stoptimes?stopId={id}&time={formatted_date}&arriveBy=false&n={numOfDepartures}&exactRadius=false&radius=200&language=fr&withScheduledSkippedStops={includeCancelled}"
     
     headers = {
         'Content-Type': 'application/json'
     }
-    
-    print(url)
 
     # Send the request
     response = requests.request("GET", url, headers=headers)
