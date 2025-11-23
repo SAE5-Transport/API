@@ -2,6 +2,7 @@ import requests
 from datetime import datetime
 from api.utils.functions import checkDistanceBetweenPoints
 import pytz
+from google.transit import gtfs_realtime_pb2
 
 def getStations(name):
     url = f"http://motis.clarifygdps.com/api/v1/geocode?text={name}&language=fr&type=STOP"
@@ -160,11 +161,194 @@ def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datet
     return {"error": "No data found"}
 
 def getIncidentsFromLines(lines):
-    # Send the request
+    """
+    Fetch GTFS-RT alerts (protobuf format) and filter by requested lines.
     
-    # TODO: Implement incident fetching logic using GTFS-RT Alerts
+    Args:
+        lines: List of line/route IDs to filter alerts for
     
-    return {"error": "No data found"}
+    Returns:
+        List of formatted alerts matching the requested lines
+    """
+    try:
+        # GTFS-RT alerts endpoint - adjust URL to your GTFS-RT provider
+        url = "http://gtfsidfm.clarifygdps.com/gtfs-rt-alerts-idfm"
+        
+        # Send the request to get protobuf data
+        response = requests.get(url, timeout=10)
+        
+        # Check if the request was successful
+        if response.status_code != 200:
+            return {"error": "Failed to fetch alerts"}
+        
+        # Parse the protobuf response
+        feed = gtfs_realtime_pb2.FeedMessage()
+        feed.ParseFromString(response.content)
+        
+        # Parse GTFS-RT alerts and filter by lines
+        formatted_alerts = []
+        
+        # Group alerts by base ID (without timestamp suffix)
+        alert_groups = {}
+        
+        for entity in feed.entity:
+            # Check if entity has alert
+            if not entity.HasField('alert'):
+                continue
+            
+            alert = entity.alert
+            
+            # Check if alert affects any of the requested lines
+            matching_lines = []
+            
+            for informed_entity in alert.informed_entity:
+                if informed_entity.HasField('route_id'):
+                    route_id = informed_entity.route_id
+                    if route_id in lines:
+                        matching_lines.append(route_id)
+            
+            # Skip if alert doesn't affect requested lines
+            if not matching_lines:
+                continue
+            
+            # Extract base alert ID (remove timestamp suffix if present)
+            # Format: "disruption_id:start_time:end_time"
+            alert_id = entity.id if entity.id else f"alert-{len(formatted_alerts)}"
+            base_id = alert_id.split(':')[0] if ':' in alert_id else alert_id
+            
+            # Group by base ID to merge multiple time periods
+            if base_id not in alert_groups:
+                alert_groups[base_id] = {
+                    'alert': alert,
+                    'entity_id': alert_id,
+                    'matching_lines': set(matching_lines)
+                }
+            else:
+                # Merge matching lines
+                alert_groups[base_id]['matching_lines'].update(matching_lines)
+        
+        # Process grouped alerts
+        for base_id, alert_data in alert_groups.items():
+            alert = alert_data['alert']
+            alert_id = alert_data['entity_id']
+            matching_lines = alert_data['matching_lines']
+            
+            # Get severity level from effect
+            severity_effect_enum = alert.effect if alert.HasField('effect') else gtfs_realtime_pb2.Alert.UNKNOWN_EFFECT
+            
+            # Map GTFS-RT Effect to severity string
+            effect_to_severity = {
+                gtfs_realtime_pb2.Alert.NO_SERVICE: "severe",
+                gtfs_realtime_pb2.Alert.REDUCED_SERVICE: "severe",
+                gtfs_realtime_pb2.Alert.SIGNIFICANT_DELAYS: "severe",
+                gtfs_realtime_pb2.Alert.DETOUR: "normal",
+                gtfs_realtime_pb2.Alert.ADDITIONAL_SERVICE: "normal",
+                gtfs_realtime_pb2.Alert.MODIFIED_SERVICE: "normal",
+                gtfs_realtime_pb2.Alert.OTHER_EFFECT: "normal",
+                gtfs_realtime_pb2.Alert.UNKNOWN_EFFECT: "unknown",
+                gtfs_realtime_pb2.Alert.STOP_MOVED: "normal"
+            }
+            severity = effect_to_severity.get(severity_effect_enum, "unknown")
+            
+            # Use severity_level if available for more precise mapping
+            if alert.HasField('severity_level'):
+                severity_level_enum = alert.severity_level
+                if severity_level_enum == gtfs_realtime_pb2.Alert.SEVERE:
+                    severity = "severe"
+                elif severity_level_enum == gtfs_realtime_pb2.Alert.WARNING:
+                    severity = "normal"
+            
+            # Extract header text (summary)
+            summary_value = "Alerte"
+            if alert.HasField('header_text'):
+                for translation in alert.header_text.translation:
+                    if translation.text:
+                        summary_value = translation.text
+                        break
+            
+            # Extract description text
+            description_value = ""
+            if alert.HasField('description_text'):
+                for translation in alert.description_text.translation:
+                    if translation.text:
+                        desc_text = translation.text
+                        # Wrap in HTML paragraph if not already HTML
+                        if desc_text and not desc_text.strip().startswith("<"):
+                            description_value = f"<p>{desc_text}</p>"
+                        else:
+                            description_value = desc_text
+                        break
+            
+            # Extract validity period (use first active period)
+            validity_period = {}
+            if len(alert.active_period) > 0:
+                first_period = alert.active_period[0]
+                if first_period.HasField('start'):
+                    validity_period["startTime"] = datetime.fromtimestamp(
+                        first_period.start, pytz.UTC
+                    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+                if first_period.HasField('end'):
+                    validity_period["endTime"] = datetime.fromtimestamp(
+                        first_period.end, pytz.UTC
+                    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+            
+            # Build situations list from informed entities (only for matching lines)
+            situations = []
+            for informed_entity in alert.informed_entity:
+                situation = {}
+                
+                if informed_entity.HasField('route_id'):
+                    route_id = informed_entity.route_id
+                    # Only include if it's one of the matching lines
+                    if route_id in matching_lines:
+                        situation["routeId"] = route_id
+                
+                if informed_entity.HasField('stop_id'):
+                    situation["stopId"] = informed_entity.stop_id
+                
+                if informed_entity.HasField('trip'):
+                    situation["tripId"] = informed_entity.trip.trip_id
+                
+                if situation:
+                    situations.append(situation)
+            
+            # Create an alert for each matching line
+            for line_id in matching_lines:
+                # Try to get line name and color from your data
+                # You can fetch this from the nextDepartures data or from a separate API
+                line_name = line_id
+                line_color = "#000000"  # Default color
+                
+                # Format the alert
+                formatted_alert = {
+                    "id": f"{alert_id}-{line_id}",
+                    "severity": severity,
+                    "summary": [
+                        {
+                            "value": summary_value
+                        }
+                    ],
+                    "description": [
+                        {
+                            "value": description_value
+                        }
+                    ],
+                    "validityPeriod": validity_period,
+                    "situations": [s for s in situations if s.get("routeId") == line_id or "routeId" not in s],
+                    "name": line_name,
+                    "presentation": {
+                        "colour": line_color
+                    }
+                }
+                
+                formatted_alerts.append(formatted_alert)
+        
+        return formatted_alerts if formatted_alerts else {"error": "No alerts found for specified lines"}
+    
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Request failed: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Error processing alerts: {str(e)}"}
 
 def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled):
     # If startTime is a datetime object, format it; otherwise use as-is
