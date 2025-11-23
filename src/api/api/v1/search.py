@@ -3,7 +3,7 @@ from flask_marshmallow import Marshmallow
 import zstandard as zstd
 from datetime import datetime, timedelta
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap, getTrip
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -254,6 +254,42 @@ def nextDepartureByStation(data):
             return departures, 404
         
         return departures
+    else:
+        return {"error": "Missing required parameters"}, 400
+
+class GetTrip(ma.Schema):
+    tripId: str = ma.String(required=True, description="Trip ID")
+    withScheduledSkippedStops: bool = ma.Boolean(description="If true, include scheduled skipped stops", load_default=False)
+    zstd: bool = ma.Boolean(description="If true, the response will be compressed with Zstandard", load_default=False)
+    
+@search_bp.route('/getTrip', strict_slashes=False, methods=['GET'])
+@arguments(GetTrip)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def trip(data):
+    """
+    Endpoint to get trip details by trip ID.
+    """
+
+    # Check if the required parameters are present
+    if data.get('tripId'):
+        # Get the trip details
+        trip = getTrip(
+            tripId=data['tripId'],
+            withScheduledSkippedStops=data['withScheduledSkippedStops']
+        )
+
+        if "error" in trip:
+            return trip, 404
+        
+        # Check if zstd is requested
+        if data.get('zstd'):
+            # Compress the response with Zstandard
+            cctx = zstd.ZstdCompressor()
+            trip = cctx.compress(json.dumps(trip).encode('utf-8'))
+
+            return Response(trip, mimetype='application/zstd')
+        else:
+            return trip
     else:
         return {"error": "Missing required parameters"}, 400
     

@@ -380,6 +380,23 @@ def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled)
     
     return {"error": "No data found"}
 
+def getTrip(tripId, withScheduledSkippedStops):
+    url = f"http://motis.clarifygdps.com/api/v5/trip?tripId={tripId}&withScheduledSkippedStops={withScheduledSkippedStops}"
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    # Send the request
+    response = requests.request("GET", url, headers=headers)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        if len(response.json()) > 0:
+            return response.json()
+    
+    return {"error": "No data found"}
+
 def getTripsOnMap(zoomLevel, minLat, minLon, maxLat, maxLon, startTimeInterval=datetime.now(), endTimeInterval=datetime.now() + timedelta(hours=1)):
     # Format the dates to ISO 8601 format with Z suffix
     formatted_start = startTimeInterval.strftime("%Y-%m-%dT%H:%M:%SZ")
