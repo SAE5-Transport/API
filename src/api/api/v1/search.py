@@ -1,9 +1,9 @@
 from flask import Blueprint, Response, json
 from flask_marshmallow import Marshmallow
 import zstandard as zstd
-from datetime import datetime
+from datetime import datetime, timedelta
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -254,5 +254,51 @@ def nextDepartureByStation(data):
             return departures, 404
         
         return departures
+    else:
+        return {"error": "Missing required parameters"}, 400
+    
+class getTripsOnMapQuery(ma.Schema):
+    zoomLevel: float = ma.Integer(required=True, description="Zoom level of the map")
+    minLat: float = ma.Float(required=True, description="Minimum latitude of the map area")
+    minLon: float = ma.Float(required=True, description="Minimum longitude of the map area")
+    maxLat: float = ma.Float(required=True, description="Maximum latitude of the map area")
+    maxLon: float = ma.Float(required=True, description="Maximum longitude of the map area")
+    startTimeInterval: datetime = ma.DateTime(description="Start time for the trips", load_default=datetime.now())
+    endTimeInterval: datetime = ma.DateTime(description="End time for the trips", load_default=datetime.now() + timedelta(hours=1))
+    zstd: bool = ma.Boolean(description="If true, the response will be compressed with Zstandard", load_default=False)
+    
+@search_bp.route('/getTripsOnMap', strict_slashes=False, methods=['GET'])
+@arguments(getTripsOnMapQuery)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def tripsOnMap(data):
+    """
+    Endpoint to get trips on a map area.
+    """
+
+    # Check if the required parameters are present
+    if data.get('zoomLevel') and data.get('minLat') and data.get('minLon') and data.get('maxLat') and data.get('maxLon') and data.get('startTimeInterval') and data.get('endTimeInterval'):
+        # Get the trips on the map
+        trips = getTripsOnMap(
+            data['zoomLevel'],
+            data['minLat'],
+            data['minLon'],
+            data['maxLat'],
+            data['maxLon'],
+            data['startTimeInterval'],
+            data['endTimeInterval']
+        )
+
+        if "error" in trips:
+            return trips, 404
+        
+        # Check if zstd is requested
+        if data.get('zstd'):
+            # Compress the response with Zstandard
+            cctx = zstd.ZstdCompressor()
+            trips = cctx.compress(json.dumps(trips).encode('utf-8'))
+
+            return Response(trips, mimetype='application/zstd')
+        else:
+            return trips
     else:
         return {"error": "Missing required parameters"}, 400

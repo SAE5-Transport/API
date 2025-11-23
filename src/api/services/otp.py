@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from api.utils.functions import checkDistanceBetweenPoints
 import pytz
 from google.transit import gtfs_realtime_pb2
@@ -377,5 +377,26 @@ def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled)
     if response.status_code == 200:
         if len(response.json()["stopTimes"]) > 0:
             return response.json()["stopTimes"]
+    
+    return {"error": "No data found"}
+
+def getTripsOnMap(zoomLevel, minLat, minLon, maxLat, maxLon, startTimeInterval=datetime.now(), endTimeInterval=datetime.now() + timedelta(hours=1)):
+    # Format the dates to ISO 8601 format with Z suffix
+    formatted_start = startTimeInterval.strftime("%Y-%m-%dT%H:%M:%SZ")
+    formatted_end = endTimeInterval.strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    url = f"http://motis.clarifygdps.com/api/v5/map/trips?min={minLat},+{minLon}&max={maxLat},+{maxLon}&zoom={zoomLevel}&startTime={formatted_start}&endTime={formatted_end}"
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    # Send the request
+    response = requests.request("GET", url, headers=headers)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        if len(response.json()) > 0:
+            return response.json()
     
     return {"error": "No data found"}
