@@ -49,6 +49,7 @@ def getStations(name):
                                 "textColor": nextDeparture.get("routeTextColor", "#FFFFFF"),
                                 "shortName": nextDeparture.get("routeShortName", ""),
                                 "longName": nextDeparture.get("routeLongName", ""),
+                                "routeId": nextDeparture.get("routeId"),
                             }
                             # Add route to station's routes
                             station["routes"].append(linesDataSet[nextDeparture["routeId"]])
