@@ -113,15 +113,22 @@ def getStations(name):
             # Sort stations by mode
             data.sort(key=lambda x: x.get("mode", max(orders.values()) + 1))
 
-            # Group stations by their name
+            # Group stations by their name and proximity
             for station in data:
                 found = False
                 for x in finalData:
+                    # Check if same name and within 1km radius
                     if x["name"] == station["name"] and checkDistanceBetweenPoints(x["lat"], x["lon"], station["lat"], station["lon"], 1):
-                        # Merge routes from duplicate stations
+                        # Merge routes from duplicate stations, avoiding duplicates by routeId
+                        existing_route_ids = {route.get("routeId") for route in x.get("routes", []) if "routeId" in route}
+                        
                         for route in station.get("routes", []):
-                            if route not in x.get("routes", []):
+                            route_id = route.get("routeId")
+                            # Only add if routeId is not already present
+                            if route_id and route_id not in existing_route_ids:
                                 x.setdefault("routes", []).append(route)
+                                existing_route_ids.add(route_id)
+                        
                         # Re-sort routes after merging by mode priority, then by short name
                         x["routes"] = sorted(
                             x.get("routes", []), 
