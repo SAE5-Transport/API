@@ -170,7 +170,7 @@ def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datet
     
     return {"error": "No data found"}
 
-def getIncidentsFromLines(lines):
+def getIncidentsFromLines(lines, gtfsRtUrl="http://gtfsidfm.clarifygdps.com/gtfs-rt-alerts-idfm"):
     """
     Fetch GTFS-RT alerts (protobuf format) and filter by requested lines.
     
@@ -182,11 +182,8 @@ def getIncidentsFromLines(lines):
         Format: [{"id": "IDFM:C01730", "name": "IDFM:C01730", "situations": [...]}, ...]
     """
     try:
-        # GTFS-RT alerts endpoint - adjust URL to your GTFS-RT provider
-        url = "http://gtfsidfm.clarifygdps.com/gtfs-rt-alerts-idfm"
-        
         # Send the request to get protobuf data
-        response = requests.get(url, timeout=10)
+        response = requests.get(gtfsRtUrl, timeout=10)
         
         # Check if the request was successful
         if response.status_code != 200:

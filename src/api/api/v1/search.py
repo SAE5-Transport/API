@@ -124,6 +124,7 @@ def searchPaths(data):
     
 class IncidentsOnLineQuery(ma.Schema):
     lineId: str = ma.String(required=True, description="Line ID")
+    gtfsRTUrl: str = ma.String(description="GTFS-RT URL for fetching incidents", load_default="http://gtfsidfm.clarifygdps.com/gtfs-rt-alerts-idfm")
 
 class IncidentValueString(ma.Schema):
     value = ma.String(description="Value of the type")
@@ -185,7 +186,7 @@ def incidentsOnLine(data):
     # Check if the required parameters are present
     if data.get('lineId'):
         # Get the incidents
-        incidents = getIncidentsFromLines(data['lineId'])
+        incidents = getIncidentsFromLines(data['lineId'], data.get('gtfsRTUrl'))
 
         if "error" in incidents:
             return incidents, 404
@@ -197,6 +198,7 @@ def incidentsOnLine(data):
 class IncidentsOnLinesQuery(ma.Schema):
     lineIds: list = ma.List(ma.String, required=True, description="List of line IDs")
     zstd: bool = ma.Boolean(description="If true, the response will be compressed with Zstandard", load_default=False)
+    gtfsRTUrl: str = ma.String(description="GTFS-RT URL for fetching incidents", load_default="http://gtfsidfm.clarifygdps.com/gtfs-rt-alerts-idfm")
 
 @search_bp.route('/incidentsOnLines', strict_slashes=False, methods=['GET'])
 @arguments(IncidentsOnLinesQuery)
@@ -209,7 +211,7 @@ def incidentsOnLines(data):
     # Check if the required parameters are present
     if data.get('lineIds'):
         # Get the incidents
-        incidents = getIncidentsFromLines(data['lineIds'])
+        incidents = getIncidentsFromLines(data['lineIds'], data.get('gtfsRTUrl'))
 
         if "error" in incidents:
             return incidents, 404
