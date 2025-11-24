@@ -44,21 +44,24 @@ def getStations(name):
                 if isinstance(nextDeparturesData, list):
                     for nextDeparture in nextDeparturesData:
                         if nextDeparture.get("routeId") and nextDeparture["routeId"] not in linesDataSet:
-                            linesDataSet[nextDeparture["routeId"]] = {
-                                "mode": nextDeparture.get("mode", "OTHER"),
-                                "color": nextDeparture.get("routeColor", "#000000"),
-                                "textColor": nextDeparture.get("routeTextColor", "#FFFFFF"),
-                                "shortName": nextDeparture.get("routeShortName", ""),
-                                "longName": nextDeparture.get("routeLongName", ""),
-                                "routeId": nextDeparture.get("routeId"),
-                            }
-                            # Add route to station's routes
-                            station["routes"].append(linesDataSet[nextDeparture["routeId"]])
-                            
                             # Change name to place name
                             place = nextDeparture.get("place")
                             if place:
-                                station["name"] = place.get("name", "---")
+                                if place.get("parentId") == station.get("id"):
+                                    linesDataSet[nextDeparture["routeId"]] = {
+                                        "mode": nextDeparture.get("mode", "OTHER"),
+                                        "color": nextDeparture.get("routeColor", "#000000"),
+                                        "textColor": nextDeparture.get("routeTextColor", "#FFFFFF"),
+                                        "shortName": nextDeparture.get("routeShortName", ""),
+                                        "longName": nextDeparture.get("routeLongName", ""),
+                                        "routeId": nextDeparture.get("routeId"),
+                                    }
+                                    # Add route to station's routes
+                                    station["routes"].append(linesDataSet[nextDeparture["routeId"]])
+                                    
+                                    # Update station name and parentId
+                                    station["name"] = place.get("name", "---")
+                                    station['parentId'] = place.get("parentId", None)
 
             # Order the stations
             orders = {
@@ -118,7 +121,7 @@ def getStations(name):
                 found = False
                 for x in finalData:
                     # Check if same name and within 1km radius
-                    if x["name"] == station["name"] and checkDistanceBetweenPoints(x["lat"], x["lon"], station["lat"], station["lon"], 1):
+                    if x.get("id") == station.get("parentId") and station.get("parentId") is not None:
                         # Merge routes from duplicate stations, avoiding duplicates by routeId
                         existing_route_ids = {route.get("routeId") for route in x.get("routes", []) if "routeId" in route}
                         
