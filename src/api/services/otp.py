@@ -48,6 +48,11 @@ def getStations(name):
                             place = nextDeparture.get("place")
                             if place:
                                 if place.get("parentId") == station.get("id"):
+                                    # Extract agencyId from the "source" field if present and matches pattern
+                                    agency_id = None
+                                    source = nextDeparture.get("source")
+                                    if source and "gtfs/" in source:
+                                        agency_id = source.split("gtfs/")[-1].split(".zip")[0]
                                     linesDataSet[nextDeparture["routeId"]] = {
                                         "mode": nextDeparture.get("mode", "OTHER"),
                                         "color": nextDeparture.get("routeColor", "#000000"),
@@ -55,6 +60,7 @@ def getStations(name):
                                         "shortName": nextDeparture.get("routeShortName", ""),
                                         "longName": nextDeparture.get("routeLongName", ""),
                                         "routeId": nextDeparture.get("routeId"),
+                                        "agencyId": agency_id
                                     }
                                     # Add route to station's routes
                                     station["routes"].append(linesDataSet[nextDeparture["routeId"]])
