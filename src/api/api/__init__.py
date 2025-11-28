@@ -16,7 +16,7 @@ def process_apispec(apispec):
 
     # Add servers
     apispec['servers'].append({
-        'url': f'http://api.hexatransit.clarifygdps.com/',
+        'url': f'https://api.hexatransit.fr/',
         'description': 'Production server'
     })
     
