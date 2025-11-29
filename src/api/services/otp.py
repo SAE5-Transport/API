@@ -223,9 +223,18 @@ def getIncidentsFromLines(lines, gtfsRtUrl="http://gtfsidfm.clarifygdps.com/gtfs
                 continue
             
             # Extract base alert ID (remove timestamp suffix if present)
-            # Format: "disruption_id:start_time:end_time"
+            # Some alert ids use ':' for namespace (e.g. 'RTA:3135-6-0073')
+            # while others append timestamps like 'disruption_id:start:end'.
+            # We should only strip trailing numeric timestamp suffixes (one or two)
+            # and otherwise keep the full id to avoid grouping unrelated alerts.
             alert_id = entity.id if entity.id else f"alert-{len(alert_groups)}"
-            base_id = alert_id.split(':')[0] if ':' in alert_id else alert_id
+            tokens = alert_id.split(':')
+            # If the id ends with two numeric tokens (start and end timestamps),
+            # remove those to get the base disruption id. Otherwise keep the id.
+            if len(tokens) >= 3 and tokens[-1].isdigit() and tokens[-2].isdigit():
+                base_id = ':'.join(tokens[:-2])
+            else:
+                base_id = alert_id
             
             # Group by base ID to merge multiple time periods
             if base_id not in alert_groups:
