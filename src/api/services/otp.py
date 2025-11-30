@@ -70,6 +70,8 @@ def getStations(name):
                                     station['parentId'] = place.get("parentId", None)
 
             # Order the stations
+            # Mode priority: lower number = higher display priority
+            # Reordered so rail/high-speed/regional rail sit above buses
             orders = {
                 "WALK": 0,
                 "BIKE": 1,
@@ -81,25 +83,29 @@ def getStations(name):
                 "RIDE_SHARING": 7,
                 "FLEX": 8,
                 "TRANSIT": 9,
-                "TRAM": 10,
-                "SUBWAY": 11,
-                "FERRY": 12,
-                "AIRPLANE": 13,
+                # Put high-priority rail modes before bus
+                "HIGHSPEED_RAIL": 10,
+                "REGIONAL_FAST_RAIL": 11,
+                "REGIONAL_RAIL": 12,
+                "RAIL": 13,
                 "SUBURBAN": 14,
-                "BUS": 15,
-                "COACH": 16,
-                "RAIL": 17,
-                "HIGHSPEED_RAIL": 18,
-                "LONG_DISTANCE": 19,
-                "NIGHT_RAIL": 20,
-                "REGIONAL_FAST_RAIL": 21,
-                "REGIONAL_RAIL": 22,
-                "CABLE_CAR": 23,
-                "FUNICULAR": 24,
-                "AERIAL_LIFT": 25,
-                "OTHER": 26,
+                # Trams / metro next
+                "TRAM": 15,
+                "SUBWAY": 16,
+                "METRO": 17,
+                # Ferry/air/long-distance
+                "FERRY": 18,
+                "AIRPLANE": 19,
+                "LONG_DISTANCE": 20,
+                "NIGHT_RAIL": 21,
+                # Coaches and buses after rail
+                "COACH": 22,
+                "BUS": 23,
+                "CABLE_CAR": 24,
+                "FUNICULAR": 25,
+                "AERIAL_LIFT": 26,
                 "AREAL_LIFT": 27,
-                "METRO": 28,
+                "OTHER": 28,
             }
 
             # Get highest mode for each station and sort routes
@@ -113,14 +119,25 @@ def getStations(name):
                     )
                 )
                 
-                station_modes = [orders[line["mode"]] for line in station.get("routes", []) if "mode" in line and line["mode"] in orders]
-                if station_modes:
-                    station["mode"] = min(station_modes)
+                # Consider both route-level modes and station-level `modes` list (may be empty)
+                route_modes = [orders[line["mode"]] for line in station.get("routes", []) if "mode" in line and line["mode"] in orders]
+                station_modes_field = [orders[m] for m in station.get("modes", []) if m in orders]
+                combined_modes = route_modes + station_modes_field
+                if combined_modes:
+                    station["mode"] = min(combined_modes)
                 else:
                     station["mode"] = max(orders.values()) + 1  # Assign a default mode if none found
 
-            # Sort stations by mode
-            data.sort(key=lambda x: x.get("mode", max(orders.values()) + 1))
+            # Sort stations by mode (priority), then exact-name-match to query, then by station name
+            query_lower = (name or "").strip().lower()
+            def station_sort_key(s):
+                mode_key = s.get("mode", max(orders.values()) + 1)
+                # exact match priority: 0 for exact match, 1 otherwise
+                exact_match = 0 if (s.get("name") or "").strip().lower() == query_lower else 1
+                name_key = (s.get("name") or "").lower()
+                return (mode_key, exact_match, name_key)
+
+            data.sort(key=station_sort_key)
 
             # Group stations by their name and proximity
             for station in data:
@@ -146,11 +163,23 @@ def getStations(name):
                                 route.get("shortName", "").lower()
                             )
                         )
+                        # Recompute the station mode after merging routes so ordering remains correct
+                        # Recompute the station mode after merging routes so ordering remains correct
+                        x_route_modes = [orders[line["mode"]] for line in x.get("routes", []) if "mode" in line and line["mode"] in orders]
+                        x_station_modes_field = [orders[m] for m in x.get("modes", []) if m in orders]
+                        x_combined = x_route_modes + x_station_modes_field
+                        if x_combined:
+                            x["mode"] = min(x_combined)
+                        else:
+                            x["mode"] = max(orders.values()) + 1
                         found = True
                         break
                 if not found:
                     finalData.append(station)
 
+
+            # Ensure final grouped list is also sorted by mode, exact match to query, then name
+            finalData.sort(key=station_sort_key)
 
             return finalData
         
