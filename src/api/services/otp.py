@@ -70,43 +70,42 @@ def getStations(name):
                                     station['parentId'] = place.get("parentId", None)
 
             # Order the stations
-            # Mode priority: lower number = higher display priority
-            # Reordered so rail/high-speed/regional rail sit above buses
-            orders = {
-                "WALK": 0,
-                "BIKE": 1,
-                "RENTAL": 2,
-                "CAR": 3,
-                "CAR_PARKING": 4,
-                "CAR_DROPOFF": 5,
-                "ODM": 6,
-                "RIDE_SHARING": 7,
-                "FLEX": 8,
-                "TRANSIT": 9,
-                # Put high-priority rail modes before bus
-                "HIGHSPEED_RAIL": 10,
-                "REGIONAL_FAST_RAIL": 11,
-                "REGIONAL_RAIL": 12,
-                "RAIL": 13,
-                "SUBURBAN": 14,
-                # Trams / metro next
-                "TRAM": 15,
-                "SUBWAY": 16,
-                "METRO": 17,
-                # Ferry/air/long-distance
-                "FERRY": 18,
-                "AIRPLANE": 19,
-                "LONG_DISTANCE": 20,
-                "NIGHT_RAIL": 21,
-                # Coaches and buses after rail
-                "COACH": 22,
-                "BUS": 23,
-                "CABLE_CAR": 24,
-                "FUNICULAR": 25,
-                "AERIAL_LIFT": 26,
-                "AREAL_LIFT": 27,
-                "OTHER": 28,
+            # GTFS route type ordering provided by user (higher value = higher priority)
+            gtfs_route_type_order = {
+                "HIGHSPEED_RAIL": 28,
+                "LONG_DISTANCE": 27,
+                "NIGHT_RAIL": 26,
+                "RAIL": 25,
+                "REGIONAL_FAST_RAIL": 24,
+                "REGIONAL_RAIL": 23,
+                "SUBURBAN": 22,
+                "METRO": 21,
+                "SUBWAY": 20,
+                "TRAM": 19,
+                "COACH": 18,
+                "BUS": 17,
+                "AIRPLANE": 16,
+                "FERRY": 15,
+                "AERIAL_LIFT": 14,
+                "AREAL_LIFT": 13,
+                "FUNICULAR": 12,
+                "CABLE_CAR": 11,
+                "ODM": 10,
+                "RIDE_SHARING": 9,
+                "CAR_DROPOFF": 8,
+                "CAR_PARKING": 7,
+                "CAR": 6,
+                "RENTAL": 5,
+                "BIKE": 4,
+                "WALK": 3,
+                "TRANSIT": 2,
+                "FLEX": 1,
+                "OTHER": 0,
             }
+
+            # Our sorting expects lower numbers = higher priority, so invert the map
+            max_val = max(gtfs_route_type_order.values()) if gtfs_route_type_order else 0
+            orders = {k: (max_val - v) for k, v in gtfs_route_type_order.items()}
 
             # Get highest mode for each station and sort routes
             for station in data:
