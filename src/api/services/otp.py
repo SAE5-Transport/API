@@ -57,7 +57,7 @@ def getStations(name):
                                         "mode": nextDeparture.get("mode", "OTHER"),
                                         "color": nextDeparture.get("routeColor", "#000000"),
                                         "textColor": nextDeparture.get("routeTextColor", "#FFFFFF"),
-                                        "shortName": nextDeparture.get("routeShortName", ""),
+                                        "shortName": nextDeparture.get("displayName", ""),
                                         "longName": nextDeparture.get("routeLongName", ""),
                                         "routeId": nextDeparture.get("routeId"),
                                         "agencyId": agency_id
