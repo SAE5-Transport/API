@@ -262,6 +262,7 @@ def nextDepartureByStation(data):
 class GetTrip(ma.Schema):
     tripId: str = ma.String(required=True, description="Trip ID")
     withScheduledSkippedStops: bool = ma.Boolean(description="If true, include scheduled skipped stops", load_default=False)
+    joinInterlinedLegs: bool = ma.Boolean(description="If true, join interlined legs", load_default=False)
     zstd: bool = ma.Boolean(description="If true, the response will be compressed with Zstandard", load_default=False)
     
 @search_bp.route('/getTrip', strict_slashes=False, methods=['GET'])
@@ -277,7 +278,8 @@ def trip(data):
         # Get the trip details
         trip = getTrip(
             tripId=data['tripId'],
-            withScheduledSkippedStops=data['withScheduledSkippedStops']
+            withScheduledSkippedStops=data['withScheduledSkippedStops'],
+            joinInterlinedLegs=data['joinInterlinedLegs']
         )
 
         if "error" in trip:

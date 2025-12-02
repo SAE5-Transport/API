@@ -430,8 +430,8 @@ def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled)
     
     return {"error": "No data found"}
 
-def getTrip(tripId, withScheduledSkippedStops):
-    url = f"http://motis.clarifygdps.com/api/v5/trip?tripId={tripId}&withScheduledSkippedStops={withScheduledSkippedStops}"
+def getTrip(tripId, withScheduledSkippedStops, joinInterlinedLegs):
+    url = f"http://motis.clarifygdps.com/api/v5/trip?tripId={tripId}&withScheduledSkippedStops={withScheduledSkippedStops}&joinInterlinedLegs={joinInterlinedLegs}"
 
     headers = {
         'Content-Type': 'application/json'
