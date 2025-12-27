@@ -16,9 +16,13 @@ def getAdresses(name):
             coordinates = geometry.get('coordinates', [0, 0])
             
             if properties.get('type') in ['district', 'street', 'house', 'city', 'locality']:
+                city = properties.get('city') or properties.get('name', '')
+                state = properties.get('state', '')
+                subname = f"{city}, {state}" if state else city
+                
                 streets.append({
                     "name": properties.get('name', ''),
-                    "subname": f"{properties.get('city', '')}, {properties.get('state', '')}",
+                    "subname": subname,
                     "lat": coordinates[1],
                     "lon": coordinates[0],
                     "type": properties.get('type', ''),
@@ -26,7 +30,7 @@ def getAdresses(name):
 
         return streets
         
-    return {}
+    return []
 
 def getAdressesByCoordinates(lat, lon):
     url = f"https://photon.komoot.io/reverse?lat={lat}&lon={lon}"
