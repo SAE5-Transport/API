@@ -3,7 +3,7 @@ from flask_marshmallow import Marshmallow
 import zstandard as zstd
 from datetime import datetime, timedelta
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap, getTrip
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap, getTrip, getStopTimes
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -258,6 +258,40 @@ def nextDepartureByStation(data):
         return departures
     else:
         return {"error": "Missing required parameters"}, 400
+    
+class getStopTimesQuery(ma.Schema):
+    stopId: str = ma.String(required=True, description="Stop ID")
+    time: datetime = ma.DateTime(description="Reference time", format='iso8601', load_default=datetime.now())
+    arriveBy: bool = ma.Boolean(description="If true, time is the arrival time", load_default=False)
+    n: int = ma.Integer(description="Number of stop times to return", load_default=5)
+    windowSeconds: int = ma.Integer(description="Search window in seconds", load_default=4 * 60 * 60)
+    pageCursor: str = ma.String(description="Pagination cursor", load_default=None)
+
+@search_bp.route('/getStopTimes', strict_slashes=False, methods=['GET'])
+@arguments(getStopTimesQuery)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def stopTimes(data):
+    """
+    Endpoint to get stop times for a given stop.
+    """
+    if not data.get('stopId'):
+        return {"error": "Missing required parameters"}, 400
+
+    result = getStopTimes(
+        stopId=data['stopId'],
+        time=data['time'],
+        arriveBy=data['arriveBy'],
+        n=data['n'],
+        windowSeconds=data['windowSeconds'],
+        pageCursor=data.get('pageCursor'),
+    )
+
+    if "error" in result:
+        return result, 404
+
+    return result
+
+
 
 class GetTrip(ma.Schema):
     tripId: str = ma.String(required=True, description="Trip ID")

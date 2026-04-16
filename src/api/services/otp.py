@@ -430,6 +430,39 @@ def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled)
     
     return {"error": "No data found"}
 
+def getStopTimes(stopId, time: datetime, arriveBy=False, n=5, windowSeconds=14400, pageCursor=None):
+    if isinstance(time, datetime):
+        time_utc = time.astimezone(pytz.UTC)
+    else:
+        time_utc = datetime.now(pytz.UTC)
+
+    resolved_cursor = (pageCursor.strip() if pageCursor and pageCursor.strip() else None) or \
+        f"LATER|{int(time_utc.timestamp())}"
+
+    ms = str(time_utc.microsecond // 1000).zfill(3)
+    iso_time = f"{time_utc.strftime('%Y-%m-%dT%H:%M:%S')}.{ms}Z"
+
+    url = (
+        f"http://motis.clarifygdps.com/api/v5/stoptimes"
+        f"?stopId={stopId}"
+        f"&time={iso_time}"
+        f"&arriveBy={str(arriveBy).lower()}"
+        f"&n={n}"
+        f"&window={windowSeconds}"
+        f"&exactRadius=false"
+        f"&radius=200"
+        f"&language=fr"
+        f"&pageCursor={resolved_cursor}"
+    )
+
+    headers = {'Content-Type': 'application/json'}
+    response = requests.request("GET", url, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+
+    return {"error": "No data found"}
+
 def getTrip(tripId, withScheduledSkippedStops, joinInterlinedLegs):
     url = f"http://motis.clarifygdps.com/api/v5/trip?tripId={tripId}&withScheduledSkippedStops={withScheduledSkippedStops}&joinInterlinedLegs={joinInterlinedLegs}"
 
