@@ -459,7 +459,13 @@ def getStopTimes(stopId, time: datetime, arriveBy=False, n=5, windowSeconds=1440
     response = requests.request("GET", url, headers=headers)
 
     if response.status_code == 200:
-        return response.json()
+        data = response.json()
+        return {
+            'stopTimes': data.get('stopTimes', []),
+            'nextPageCursor': data.get('nextPageCursor'),
+            'previousPageCursor': data.get('previousPageCursor'),
+            'place': data.get('place'),
+        }
 
     return {"error": "No data found"}
 
