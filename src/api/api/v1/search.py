@@ -3,7 +3,7 @@ from flask_marshmallow import Marshmallow
 import zstandard as zstd
 from datetime import datetime, timedelta
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap, getTrip, getStopTimes
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap, getTrip, getStopTimes, getStopsOnMap
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -258,7 +258,8 @@ def nextDepartureByStation(data):
         return departures
     else:
         return {"error": "Missing required parameters"}, 400
-    
+
+
 class getStopTimesQuery(ma.Schema):
     stopId: str = ma.String(required=True, description="Stop ID")
     time: datetime = ma.DateTime(description="Reference time", format='iso8601', load_default=datetime.now())
@@ -290,7 +291,6 @@ def stopTimes(data):
         return result, 404
 
     return result
-
 
 
 class GetTrip(ma.Schema):
@@ -374,5 +374,40 @@ def tripsOnMap(data):
             return Response(trips, mimetype='application/zstd')
         else:
             return trips
+    else:
+        return {"error": "Missing required parameters"}, 400
+
+class getStopsOnMapQuery(ma.Schema):
+    minLat: float = ma.Float(required=True, description="Minimum latitude of the map area")
+    minLon: float = ma.Float(required=True, description="Minimum longitude of the map area")
+    maxLat: float = ma.Float(required=True, description="Maximum latitude of the map area")
+    maxLon: float = ma.Float(required=True, description="Maximum longitude of the map area")
+    zstd: bool = ma.Boolean(description="If true, the response will be compressed with Zstandard", load_default=False)
+
+@search_bp.route('/getStopsOnMap', strict_slashes=False, methods=['GET'])
+@arguments(getStopsOnMapQuery)
+@other_responses({404: 'No data found', 400: 'Missing required parameters'})
+def stopsOnMap(data):
+    """
+    Endpoint to get stops on a map area, including lines passing through each stop.
+    """
+
+    if data.get('minLat') is not None and data.get('minLon') is not None and data.get('maxLat') is not None and data.get('maxLon') is not None:
+        stops = getStopsOnMap(
+            data['minLat'],
+            data['minLon'],
+            data['maxLat'],
+            data['maxLon']
+        )
+
+        if isinstance(stops, dict) and "error" in stops:
+            return stops, 404
+
+        if data.get('zstd'):
+            cctx = zstd.ZstdCompressor()
+            stops = cctx.compress(json.dumps(stops).encode('utf-8'))
+            return Response(stops, mimetype='application/zstd')
+        else:
+            return stops
     else:
         return {"error": "Missing required parameters"}, 400

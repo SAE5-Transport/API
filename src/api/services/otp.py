@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 from api.utils.functions import checkDistanceBetweenPoints
 import pytz
 from google.transit import gtfs_realtime_pb2
@@ -22,52 +23,41 @@ def getStations(name):
             data = response.json()
 
             finalData = []
-            
-            # Get all the lines based on the lines passing through the stops
-            linesDataSet = {}
-            
-            # Fetch next departures for each station and enrich station data
-            for station in data:
-                # Initialize routes list for this station if not present
-                if "routes" not in station:
-                    station["routes"] = []
-                
-                # Get next departures for this station
-                nextDeparturesData = getNextDeparturesByStation(
-                    station["id"], 
-                    datetime.now(pytz.timezone('Europe/Paris')).astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), 
-                    255, 
-                    True
-                )
-                
-                # Process departures if valid response
-                if isinstance(nextDeparturesData, list):
-                    for nextDeparture in nextDeparturesData:
-                        if nextDeparture.get("routeId") and nextDeparture["routeId"] not in linesDataSet:
-                            # Change name to place name
-                            place = nextDeparture.get("place")
-                            if place:
-                                if place.get("parentId") == station.get("id"):
-                                    # Extract agencyId from the "source" field if present and matches pattern
-                                    agency_id = None
-                                    source = nextDeparture.get("source")
-                                    if source and "gtfs/" in source:
-                                        agency_id = source.split("gtfs/")[-1].split(".zip")[0]
-                                    linesDataSet[nextDeparture["routeId"]] = {
-                                        "mode": nextDeparture.get("mode", "OTHER"),
-                                        "color": nextDeparture.get("routeColor", "#000000"),
-                                        "textColor": nextDeparture.get("routeTextColor", "#FFFFFF"),
-                                        "shortName": nextDeparture.get("displayName", ""),
-                                        "longName": nextDeparture.get("routeLongName", ""),
-                                        "routeId": nextDeparture.get("routeId"),
-                                        "agencyId": agency_id
-                                    }
-                                    # Add route to station's routes
-                                    station["routes"].append(linesDataSet[nextDeparture["routeId"]])
-                                    
-                                    # Update station name and parentId
-                                    station["name"] = place.get("name", "---")
-                                    station['parentId'] = place.get("parentId", None)
+
+            now = datetime.now(pytz.timezone('Europe/Paris')).astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+            def enrich_station(station):
+                station.setdefault("routes", [])
+                departures = getNextDeparturesByStation(station["id"], now, 500, True)
+                if not isinstance(departures, list):
+                    return station
+                linesDataSet = {}
+                for nextDeparture in departures:
+                    route_id = nextDeparture.get("routeId")
+                    if not route_id or route_id in linesDataSet:
+                        continue
+                    place = nextDeparture.get("place")
+                    if place and place.get("parentId") == station.get("id"):
+                        agency_id = None
+                        source = nextDeparture.get("source")
+                        if source and "gtfs/" in source:
+                            agency_id = source.split("gtfs/")[-1].split(".zip")[0]
+                        linesDataSet[route_id] = {
+                            "mode": nextDeparture.get("mode", "OTHER"),
+                            "color": nextDeparture.get("routeColor", "#000000"),
+                            "textColor": nextDeparture.get("routeTextColor", "#FFFFFF"),
+                            "shortName": nextDeparture.get("displayName", ""),
+                            "longName": nextDeparture.get("routeLongName", ""),
+                            "routeId": route_id,
+                            "agencyId": agency_id
+                        }
+                        station["routes"].append(linesDataSet[route_id])
+                        station["name"] = place.get("name", "---")
+                        station["parentId"] = place.get("parentId", None)
+                return station
+
+            with ThreadPoolExecutor(max_workers=len(data)) as executor:
+                data = list(executor.map(enrich_station, data))
 
             # Order the stations
             # GTFS route type ordering provided by user (higher value = higher priority)
@@ -485,6 +475,79 @@ def getTrip(tripId, withScheduledSkippedStops, joinInterlinedLegs):
             return response.json()
     
     return {"error": "No data found"}
+
+def getStopsOnMap(minLat, minLon, maxLat, maxLon):
+    url = f"http://motis.clarifygdps.com/api/v1/map/stops?min={minLat},+{minLon}&max={maxLat},+{maxLon}&language=fr"
+
+    headers = {'Content-Type': 'application/json'}
+
+    response = requests.request("GET", url, headers=headers)
+
+    if response.status_code != 200:
+        return {"error": "No data found"}
+
+    data = response.json()
+    if not data or not isinstance(data, list):
+        return {"error": "No data found"}
+
+    now = datetime.now(pytz.timezone('Europe/Paris')).astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def enrich_stop(stop):
+        stop["routes"] = []
+        stop_id = stop.get("stopId") or stop.get("id")
+        if not stop_id:
+            return stop
+
+        departures = getNextDeparturesByStation(stop_id, now, 500, True)
+        if not isinstance(departures, list):
+            return stop
+
+        seen_route_ids = set()
+        for departure in departures:
+            route_id = departure.get("routeId")
+            if not route_id or route_id in seen_route_ids:
+                continue
+            seen_route_ids.add(route_id)
+
+            agency_id = None
+            source = departure.get("source")
+            if source and "gtfs/" in source:
+                agency_id = source.split("gtfs/")[-1].split(".zip")[0]
+
+            stop["routes"].append({
+                "mode": departure.get("mode", "OTHER"),
+                "color": departure.get("routeColor", "#000000"),
+                "textColor": departure.get("routeTextColor", "#FFFFFF"),
+                "shortName": departure.get("displayName", ""),
+                "longName": departure.get("routeLongName", ""),
+                "routeId": route_id,
+                "agencyId": agency_id
+            })
+
+        return stop
+
+    with ThreadPoolExecutor(max_workers=len(data)) as executor:
+        data = list(executor.map(enrich_stop, data))
+
+    # Build lookup by stopId for O(1) access
+    stops_by_id = {stop["stopId"]: stop for stop in data if stop.get("stopId")}
+
+    # Merge children into their parent
+    finalData = []
+    for stop in data:
+        parent_id = stop.get("parentId")
+        if parent_id and parent_id in stops_by_id:
+            parent = stops_by_id[parent_id]
+            parent.setdefault("routes", [])
+            existing_route_ids = {r.get("routeId") for r in parent["routes"] if "routeId" in r}
+            for route in stop.get("routes", []):
+                if route.get("routeId") and route["routeId"] not in existing_route_ids:
+                    parent["routes"].append(route)
+                    existing_route_ids.add(route["routeId"])
+        else:
+            finalData.append(stop)
+
+    return finalData
 
 def getTripsOnMap(zoomLevel, minLat, minLon, maxLat, maxLon, startTimeInterval=datetime.now(), endTimeInterval=datetime.now() + timedelta(hours=1)):
     # Format the dates to ISO 8601 format with Z suffix

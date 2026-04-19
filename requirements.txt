@@ -20,7 +20,7 @@ MarkupSafe==3.0.2
 marshmallow==3.26.1
 packaging==24.2
 polyline==2.0.2
-psycopg2-binary==2.9.10
+psycopg2-binary==2.9.11
 pymongo==4.11.1
 pyproject_hooks==1.2.0
 pytz==2025.2
