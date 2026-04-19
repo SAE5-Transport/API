@@ -28,7 +28,7 @@ def getStations(name):
 
             def enrich_station(station):
                 station.setdefault("routes", [])
-                departures = getNextDeparturesByStation(station["id"], now, 500, True)
+                departures = getNextDeparturesByStation(station["id"], now, 300, True)
                 if not isinstance(departures, list):
                     return station
                 linesDataSet = {}
@@ -498,7 +498,7 @@ def getStopsOnMap(minLat, minLon, maxLat, maxLon):
         if not stop_id:
             return stop
 
-        departures = getNextDeparturesByStation(stop_id, now, 500, True)
+        departures = getNextDeparturesByStation(stop_id, now, 300, True)
         if not isinstance(departures, list):
             return stop
 
@@ -529,8 +529,9 @@ def getStopsOnMap(minLat, minLon, maxLat, maxLon):
     with ThreadPoolExecutor(max_workers=len(data)) as executor:
         data = list(executor.map(enrich_stop, data))
 
-    # Build lookup by stopId for O(1) access
+    # Build lookup by stopId and collect all referenced parentIds
     stops_by_id = {stop["stopId"]: stop for stop in data if stop.get("stopId")}
+    referenced_parent_ids = {stop["parentId"] for stop in data if stop.get("parentId")}
 
     # Merge children into their parent
     finalData = []
@@ -544,7 +545,7 @@ def getStopsOnMap(minLat, minLon, maxLat, maxLon):
                 if route.get("routeId") and route["routeId"] not in existing_route_ids:
                     parent["routes"].append(route)
                     existing_route_ids.add(route["routeId"])
-        else:
+        elif not parent_id and stop.get("stopId") in referenced_parent_ids:
             finalData.append(stop)
 
     return finalData
