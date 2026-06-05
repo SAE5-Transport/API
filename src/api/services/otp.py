@@ -178,7 +178,7 @@ def getPaths(departure_lat, departure_lon, arrival_lat, arrival_lon, date: datet
     # Format the date to ISO 8601 format with Z suffix
     formatted_date = date.strftime("%Y-%m-%dT%H:%M:%SZ")
     
-    url = f"http://motis.clarifygdps.com/api/v5/plan?time={formatted_date}&fromPlace={departure_lat},{departure_lon}&toPlace={arrival_lat},{arrival_lon}&withFares=true&fastestDirectFactor=1.5&joinInterlinedLegs=false&maxMatchingDistance=250&arriveBy={arrival}&numItineraries={numTrips}"
+    url = f"http://motis.clarifygdps.com/api/v6/plan?time={formatted_date}&fromPlace={departure_lat},{departure_lon}&toPlace={arrival_lat},{arrival_lon}&withFares=true&fastestDirectFactor=1.5&joinInterlinedLegs=false&maxMatchingDistance=250&arriveBy={arrival}&numItineraries={numTrips}"
 
     headers = {
         'Content-Type': 'application/json'
@@ -404,7 +404,7 @@ def getNextDeparturesByStation(id, startTime, numOfDepartures, includeCancelled)
     else:
         formatted_date = startTime
     
-    url = f"http://motis.clarifygdps.com/api/v5/stoptimes?stopId={id}&time={formatted_date}&arriveBy=false&n={numOfDepartures}&exactRadius=false&radius=200&language=fr&withScheduledSkippedStops={includeCancelled}"
+    url = f"http://motis.clarifygdps.com/api/v6/stoptimes?stopId={id}&time={formatted_date}&arriveBy=false&n={numOfDepartures}&exactRadius=false&radius=200&language=fr&withScheduledSkippedStops={includeCancelled}"
     
     headers = {
         'Content-Type': 'application/json'
@@ -433,7 +433,7 @@ def getStopTimes(stopId, time: datetime, arriveBy=False, n=5, windowSeconds=1440
     iso_time = f"{time_utc.strftime('%Y-%m-%dT%H:%M:%S')}.{ms}Z"
 
     url = (
-        f"http://motis.clarifygdps.com/api/v5/stoptimes"
+        f"http://motis.clarifygdps.com/api/v6/stoptimes"
         f"?stopId={stopId}"
         f"&time={iso_time}"
         f"&arriveBy={str(arriveBy).lower()}"
@@ -460,7 +460,7 @@ def getStopTimes(stopId, time: datetime, arriveBy=False, n=5, windowSeconds=1440
     return {"error": "No data found"}
 
 def getTrip(tripId, withScheduledSkippedStops, joinInterlinedLegs):
-    url = f"http://motis.clarifygdps.com/api/v5/trip?tripId={tripId}&withScheduledSkippedStops={withScheduledSkippedStops}&joinInterlinedLegs={joinInterlinedLegs}"
+    url = f"http://motis.clarifygdps.com/api/v6/trip?tripId={tripId}&withScheduledSkippedStops={withScheduledSkippedStops}&joinInterlinedLegs={joinInterlinedLegs}"
 
     headers = {
         'Content-Type': 'application/json'
@@ -477,7 +477,7 @@ def getTrip(tripId, withScheduledSkippedStops, joinInterlinedLegs):
     return {"error": "No data found"}
 
 def getStopsOnMap(minLat, minLon, maxLat, maxLon):
-    url = f"http://motis.clarifygdps.com/api/v1/map/stops?min={minLat},+{minLon}&max={maxLat},+{maxLon}&language=fr"
+    url = f"http://motis.clarifygdps.com/api/v6/map/stops?min={minLat},+{minLon}&max={maxLat},+{maxLon}&language=fr"
 
     headers = {'Content-Type': 'application/json'}
 
@@ -555,7 +555,7 @@ def getTripsOnMap(zoomLevel, minLat, minLon, maxLat, maxLon, startTimeInterval=d
     formatted_start = startTimeInterval.strftime("%Y-%m-%dT%H:%M:%SZ")
     formatted_end = endTimeInterval.strftime("%Y-%m-%dT%H:%M:%SZ")
     
-    url = f"http://motis.clarifygdps.com/api/v5/map/trips?min={minLat},+{minLon}&max={maxLat},+{maxLon}&zoom={zoomLevel}&startTime={formatted_start}&endTime={formatted_end}"
+    url = f"http://motis.clarifygdps.com/api/v6/map/trips?min={minLat},+{minLon}&max={maxLat},+{maxLon}&zoom={zoomLevel}&startTime={formatted_start}&endTime={formatted_end}"
 
     headers = {
         'Content-Type': 'application/json'
