@@ -287,7 +287,8 @@ def getIncidentsFromLines(lines, gtfsRtUrl="http://gtfsidfm.clarifygdps.com/gtfs
                 gtfs_realtime_pb2.Alert.MODIFIED_SERVICE: "normal",
                 gtfs_realtime_pb2.Alert.OTHER_EFFECT: "normal",
                 gtfs_realtime_pb2.Alert.UNKNOWN_EFFECT: "unknown",
-                gtfs_realtime_pb2.Alert.STOP_MOVED: "normal"
+                gtfs_realtime_pb2.Alert.STOP_MOVED: "normal",
+                gtfs_realtime_pb2.Alert.ACCESSIBILITY_ISSUE: "normal"
             }
             severity = effect_to_severity.get(severity_effect_enum, "unknown")
             
