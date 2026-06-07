@@ -530,15 +530,16 @@ def getStopsOnMap(minLat, minLon, maxLat, maxLon):
     with ThreadPoolExecutor(max_workers=len(data)) as executor:
         data = list(executor.map(enrich_stop, data))
 
-    # Build lookup by stopId and collect all referenced parentIds
     stops_by_id = {stop["stopId"]: stop for stop in data if stop.get("stopId")}
-    referenced_parent_ids = {stop["parentId"] for stop in data if stop.get("parentId")}
 
-    # Merge children into their parent
     finalData = []
+    # parentId -> representative stop, for children whose parent is outside the bbox
+    orphan_groups = {}
+
     for stop in data:
         parent_id = stop.get("parentId")
         if parent_id and parent_id in stops_by_id:
+            # Parent is in data: merge routes into it
             parent = stops_by_id[parent_id]
             parent.setdefault("routes", [])
             existing_route_ids = {r.get("routeId") for r in parent["routes"] if "routeId" in r}
@@ -546,9 +547,22 @@ def getStopsOnMap(minLat, minLon, maxLat, maxLon):
                 if route.get("routeId") and route["routeId"] not in existing_route_ids:
                     parent["routes"].append(route)
                     existing_route_ids.add(route["routeId"])
-        elif not parent_id and stop.get("stopId") in referenced_parent_ids:
+        elif parent_id:
+            # Parent not in data: group siblings under the first one seen
+            if parent_id not in orphan_groups:
+                orphan_groups[parent_id] = stop
+            else:
+                rep = orphan_groups[parent_id]
+                rep.setdefault("routes", [])
+                existing_route_ids = {r.get("routeId") for r in rep["routes"] if "routeId" in r}
+                for route in stop.get("routes", []):
+                    if route.get("routeId") and route["routeId"] not in existing_route_ids:
+                        rep["routes"].append(route)
+                        existing_route_ids.add(route["routeId"])
+        else:
             finalData.append(stop)
 
+    finalData.extend(orphan_groups.values())
     return finalData
 
 def getTripsOnMap(zoomLevel, minLat, minLon, maxLat, maxLon, startTimeInterval=datetime.now(), endTimeInterval=datetime.now() + timedelta(hours=1)):
