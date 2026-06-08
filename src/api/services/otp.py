@@ -565,6 +565,20 @@ def getStopsOnMap(minLat, minLon, maxLat, maxLon):
     finalData.extend(orphan_groups.values())
     return finalData
 
+def refreshItinerary(itinerary):
+    url = "http://motis.clarifygdps.com/api/v6/refreshItinerary"
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.request("POST", url, headers=headers, json=itinerary)
+
+    if response.status_code == 200:
+        return response.json()
+
+    return {"error": "Failed to refresh itinerary"}
+
 def getTripsOnMap(zoomLevel, minLat, minLon, maxLat, maxLon, startTimeInterval=datetime.now(), endTimeInterval=datetime.now() + timedelta(hours=1)):
     # Format the dates to ISO 8601 format with Z suffix
     formatted_start = startTimeInterval.strftime("%Y-%m-%dT%H:%M:%SZ")

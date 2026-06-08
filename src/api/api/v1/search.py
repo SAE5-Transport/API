@@ -1,9 +1,9 @@
-from flask import Blueprint, Response, json
+from flask import Blueprint, Response, json, request
 from flask_marshmallow import Marshmallow
 import zstandard as zstd
 from datetime import datetime, timedelta
 from apifairy import response, other_responses, arguments
-from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap, getTrip, getStopTimes, getStopsOnMap
+from api.services.otp import getStations, getPaths, getIncidentsFromLines, getNextDeparturesByStation, getTripsOnMap, getTrip, getStopTimes, getStopsOnMap, refreshItinerary as refreshItineraryService
 from api.services.osm import getAdresses, getAdressesByCoordinates
 
 search_bp = Blueprint("search", __name__, url_prefix='/search')
@@ -411,3 +411,22 @@ def stopsOnMap(data):
             return stops
     else:
         return {"error": "Missing required parameters"}, 400
+
+@search_bp.route('/refreshItinerary', strict_slashes=False, methods=['POST'])
+@other_responses({404: 'Failed to refresh itinerary', 400: 'Missing itinerary body'})
+def refreshItinerary():
+    """
+    Endpoint to refresh a saved itinerary with current real-time data.
+    Accepts the itinerary object (as returned by searchPaths) and returns
+    the same itinerary updated with live departure/arrival times.
+    """
+    body = request.get_json(silent=True)
+    if not body:
+        return {"error": "Missing itinerary body"}, 400
+
+    result = refreshItineraryService(body)
+
+    if isinstance(result, dict) and "error" in result:
+        return result, 404
+
+    return result
